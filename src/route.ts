@@ -1,7 +1,7 @@
-import type { JetRequest, JetResponse, RequestParams } from ".";
+import type { JetRequest, JetResponse } from "./http";
 
 type RouteNextHandler = () => void;
-type RouteHandler<Params extends RequestParams = {}> = (
+type RouteHandler<Params extends ParamsDictionary = {}> = (
   req: JetRequest<Params>,
   res: JetResponse,
   next: RouteNextHandler
@@ -14,9 +14,9 @@ export type RouteDefiner = {
   (handler: Route | RouteHandler): void;
 };
 
-interface ParamsDictionary {
+export type ParamsDictionary = {
   [key: string]: string;
-}
+};
 type RemoveTail<
   S extends string,
   Tail extends string
@@ -28,7 +28,7 @@ type GetRouteParameter<S extends string> = RemoveTail<
 type RouteParameters<Route extends string> = string extends Route
   ? ParamsDictionary
   : Route extends `${string}(${string}`
-  ? ParamsDictionary //TODO: handling for regex parameters
+  ? ParamsDictionary
   : Route extends `${string}:${infer Rest}`
   ? (GetRouteParameter<Rest> extends never
       ? ParamsDictionary
@@ -47,31 +47,38 @@ const isRouteBaseOrRouteHandler = (
 ): pattern is RouteHandler | RouteBase =>
   typeof pattern === "function" || pattern instanceof RouteBase;
 
-const testRoute = (
+const matchRoute = (
   routeMethod?: string,
   routePattern: string = "",
   method: string = "",
   url?: string,
   isRouter = false
-) => {
-  const params: RequestParams = {};
+): { isMatch: boolean; params?: ParamsDictionary } => {
   const allowMethod = !routeMethod || routeMethod === method;
-  if (!allowMethod) return { isMatch: false, params };
+  if (!allowMethod) return { isMatch: false };
   if (routePattern) {
     const isParamsPattern = routePattern.includes(":");
     if (isParamsPattern) {
-      if (!url) return { isMatch: false, params };
+      if (!url) return { isMatch: false };
       const routeParts = routePattern.split("/");
       const urlParts = url.split("/");
-      if (!isRouter && routeParts.length !== urlParts.length)
-        return { isMatch: false, params };
-      for (let i = 0; i < routeParts.length; i++) {
+      const partLength = routeParts.length;
+      if (!isRouter && partLength !== urlParts.length)
+        return { isMatch: false };
+      const params: ParamsDictionary = {};
+      for (let i = 0; i < partLength; i++) {
         const routePart = routeParts[i];
-        if (routePart.startsWith(":")) {
-          const paramName = routePart.substring(1);
-          params[paramName] = urlParts[i];
-        } else if (urlParts[i] !== routePart)
-          return { isMatch: false, params: {} };
+        const urlPart = urlParts[i];
+        const isParamPart = routePart.startsWith(":");
+        if (isParamPart) {
+          const isOptional = routePart.endsWith("?");
+          const paramName = routePart.substring(
+            1,
+            routePart.length - (isOptional ? 1 : 0)
+          );
+          if (!isOptional && !urlPart) return { isMatch: false };
+          params[paramName] = urlPart;
+        } else if (urlPart !== routePart) return { isMatch: false };
       }
       return { isMatch: true, params };
     }
@@ -80,9 +87,9 @@ const testRoute = (
         ? url.startsWith(routePattern)
         : url === routePattern
       : true;
-    return { isMatch: patternMatched, params };
+    return { isMatch: patternMatched };
   }
-  return { isMatch: true, params };
+  return { isMatch: true };
 };
 
 class RouteBase {
@@ -132,18 +139,16 @@ export default class Route extends RouteBase {
     super();
     type A = string | B;
     type B = RouteHandler | RouteBase;
-    this.use = (arg1: A, arg2?: B) => this.addHandler(void 0, arg1, arg2);
-    this.get = (arg1: A, arg2?: B) => this.addHandler("GET", arg1, arg2);
-    this.post = (arg1: A, arg2?: B) => this.addHandler("POST", arg1, arg2);
-    this.put = (arg1: A, arg2?: B) => this.addHandler("PUT", arg1, arg2);
-    this.delete = (arg1: A, arg2?: B) => this.addHandler("DELETE", arg1, arg2);
-    this.head = (arg1: A, arg2?: B) => this.addHandler("HEAD", arg1, arg2);
-    this.trace = (arg1: A, arg2?: B) => this.addHandler("TRACE", arg1, arg2);
-    this.options = (arg1: A, arg2?: B) =>
-      this.addHandler("OPTIONS", arg1, arg2);
-    this.patch = (arg1: A, arg2?: B) => this.addHandler("PATCH", arg1, arg2);
-    this.connect = (arg1: A, arg2?: B) =>
-      this.addHandler("CONNECT", arg1, arg2);
+    this.use = (a: A, b?: B) => this.addHandler(void 0, a, b);
+    this.get = (a: A, b?: B) => this.addHandler("GET", a, b);
+    this.post = (a: A, b?: B) => this.addHandler("POST", a, b);
+    this.put = (a: A, b?: B) => this.addHandler("PUT", a, b);
+    this.delete = (a: A, b?: B) => this.addHandler("DELETE", a, b);
+    this.head = (a: A, b?: B) => this.addHandler("HEAD", a, b);
+    this.trace = (a: A, b?: B) => this.addHandler("TRACE", a, b);
+    this.options = (a: A, b?: B) => this.addHandler("OPTIONS", a, b);
+    this.patch = (a: A, b?: B) => this.addHandler("PATCH", a, b);
+    this.connect = (a: A, b?: B) => this.addHandler("CONNECT", a, b);
   }
 
   async handle(
@@ -157,10 +162,10 @@ export default class Route extends RouteBase {
     const root = _root + (this.pattern || "");
     if (stack.length === 0) return next();
     for (const handler of stack) {
-      const currRoot = root + handler.pattern || "";
-      const { isMatch, params } = testRoute(
+      const currPattern = root + handler.pattern || "";
+      const { isMatch, params } = matchRoute(
         handler.method,
-        currRoot,
+        currPattern,
         method,
         url,
         handler.handler instanceof Route
@@ -168,9 +173,9 @@ export default class Route extends RouteBase {
       if (isMatch) {
         try {
           await new Promise<void>((resolve, reject) => {
-            req.params = params;
-            handler.handle(req, res, resolve, currRoot);
-            req.onend(reject);
+            req.params = params || {};
+            handler.handle(req, res, resolve, currPattern);
+            req.once("end", reject);
           });
         } catch {
           return;
@@ -181,13 +186,13 @@ export default class Route extends RouteBase {
   }
 
   private addHandler(
-    arg1?: string, // expect method
+    arg1?: string | RouteHandler | RouteBase, // expect method
     arg2?: string | RouteHandler | RouteBase, // expect path pattern
     arg3?: RouteHandler | RouteBase // expect route handler
   ) {
-    const method = [arg1, arg2].every(isString) ? arg1 : void 0;
+    const method = isString(arg1) && isString(arg2) ? arg1 : void 0;
     const pattern = [arg2, arg1].find(isString) || "";
-    const handler = [arg3, arg3].find(isRouteBaseOrRouteHandler);
+    const handler = [arg3, arg2].find(isRouteBaseOrRouteHandler);
     if (handler) this.stack.push(new RouteBase(method, pattern, handler));
     return this;
   }
