@@ -31,6 +31,4 @@ const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, async () => {
   console.log(`listening on port http://localhost:${PORT}`);
-  const res = await fetch("http://localhost:3000/home1/room137");
-  console.log("response", await res.text());
 });
