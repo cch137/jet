@@ -53,7 +53,7 @@ const matchRoute = (
   routePattern: string = "",
   method: string = "",
   url?: string,
-  isRouter = false
+  matchStart = false
 ): { isMatch: boolean; params?: ParamsDictionary } => {
   const allowMethod = !routeMethod || routeMethod === method;
   if (!allowMethod) return { isMatch: false };
@@ -64,7 +64,7 @@ const matchRoute = (
       const routeParts = routePattern.split("/");
       const urlParts = url.split("/");
       const partLength = routeParts.length;
-      if (!isRouter && partLength !== urlParts.length)
+      if (!matchStart && partLength !== urlParts.length)
         return { isMatch: false };
       const params: ParamsDictionary = {};
       for (let i = 0; i < partLength; i++) {
@@ -84,7 +84,7 @@ const matchRoute = (
       return { isMatch: true, params };
     }
     const patternMatched = url
-      ? isRouter
+      ? matchStart
         ? url.startsWith(routePattern)
         : url === routePattern
       : true;
@@ -136,7 +136,7 @@ export default class Route extends RouteBase {
   trace: RouteDefiner;
   patch: RouteDefiner;
 
-  constructor() {
+  constructor(handler?: RouteHandler) {
     super();
     type A = string | B;
     type B = RouteHandler | RouteBase;
@@ -150,6 +150,7 @@ export default class Route extends RouteBase {
     this.options = (a: A, b?: B) => this.addHandler("OPTIONS", a, b);
     this.patch = (a: A, b?: B) => this.addHandler("PATCH", a, b);
     this.connect = (a: A, b?: B) => this.addHandler("CONNECT", a, b);
+    if (handler) this.use(handler);
   }
 
   async handle(
@@ -169,7 +170,7 @@ export default class Route extends RouteBase {
         currPattern,
         method,
         url,
-        handler.handler instanceof Route
+        handler.handler instanceof Route || !handler.pattern
       );
       if (isMatch) {
         try {
@@ -193,7 +194,7 @@ export default class Route extends RouteBase {
   ) {
     const method = isString(arg1) && isString(arg2) ? arg1 : void 0;
     const pattern = [arg2, arg1].find(isString) || "";
-    const handler = [arg3, arg2].find(isRouteBaseOrRouteHandler);
+    const handler = [arg3, arg2, arg1].find(isRouteBaseOrRouteHandler);
     const rb = new RouteBase(method, pattern, handler);
     const stack = this.stack;
     stack.push(rb);

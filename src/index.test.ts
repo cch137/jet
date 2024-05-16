@@ -18,9 +18,6 @@ jet.get("/:a/:b/test", (req, res) => {
   res.send("OK");
 });
 
-jet.use((req, res, next) => {
-  next();
-});
 jet.get("/home1", router1);
 jet.get("/home2", router1);
 

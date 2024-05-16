@@ -8,7 +8,7 @@ declare module "http" {
   }
   interface ServerResponse {
     status(code?: number, message?: string): this;
-    send(data: string | Buffer | Uint8Array): this;
+    send(data: any): Promise<this>;
   }
 }
 
@@ -30,12 +30,22 @@ Object.defineProperty(http.IncomingMessage.prototype, "ip", {
   },
 });
 
-http.ServerResponse.prototype.send = function send(
-  data: string | Buffer | Uint8Array
-) {
-  this.write(data);
-  this.end();
-  return this;
+http.ServerResponse.prototype.send = function send(data: any) {
+  if (
+    !(
+      typeof data === "string" ||
+      data instanceof Uint8Array ||
+      data instanceof Buffer
+    )
+  ) {
+    data = JSON.stringify(data);
+  }
+  return new Promise((resolve, reject) => {
+    this.write(data, (e) => {
+      if (e) reject(e);
+    });
+    this.end(() => resolve(this));
+  });
 };
 
 http.ServerResponse.prototype.status = function status(
