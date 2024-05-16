@@ -1,3 +1,4 @@
+import env from "@cch137/env";
 import { JetServer, Route } from ".";
 
 const server = new JetServer();
@@ -25,8 +26,11 @@ server.use((req, res, next) => {
 server.get("/home1", router1);
 server.get("/home2", router1);
 
-server.listen(3000, async () => {
-  console.log("listening on port http://localhost:3000");
+env();
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, async () => {
+  console.log(`listening on port http://localhost:${PORT}`);
   const res = await fetch("http://localhost:3000/home1/room137");
   console.log("response", await res.text());
 });

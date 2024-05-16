@@ -13,5 +13,8 @@
   },
   "engines": {
     "node": ">=21"
+  },
+  "dependencies": {
+    "@cch137/env": "^0.0.1"
   }
 }
