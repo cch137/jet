@@ -1,4 +1,3 @@
-import env from "@cch137/env";
 import { JetServer, Route } from ".";
 
 const server = new JetServer();
@@ -20,13 +19,12 @@ server.get("/:a/:b/test", (req, res) => {
 });
 
 server.use((req, res, next) => {
-  console.log(req.ip, req.method, req.url, req.headers);
+  console.log(req.ip, req.method, req.url, req.rawHeaders, req.headers);
   next();
 });
 server.get("/home1", router1);
 server.get("/home2", router1);
 
-env();
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, async () => {
