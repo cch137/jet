@@ -12,25 +12,20 @@ declare module "http" {
   }
 }
 
-const singleString = (data: string | string[] | undefined): string =>
-  data === undefined ? "" : Array.isArray(data) ? data[0] : data;
-const isNotEmptyString = (data: any): data is string =>
-  typeof data === "string" ? /^\s*$/.test(data) : false;
-const trimIps = (ips: string): string => ips.split(",")[0].trim();
+const extractHeader = (data: string | string[] | undefined): string =>
+  data ? (Array.isArray(data) ? data[0] : data) : "";
 
 http.IncomingMessage.prototype.params = {};
 
 Object.defineProperty(http.IncomingMessage.prototype, "ip", {
   get: function () {
     const headers = (this as http.IncomingMessage).headers;
-
-    return trimIps(
-      singleString(
-        (this as http.IncomingMessage).socket.remoteAddress ||
-          headers["cf-connecting-ip"] ||
-          headers["x-forwarded-for"] ||
-          headers["x-real-ip"]
-      )
+    return (
+      extractHeader(headers["cf-connecting-ip"]) ||
+      extractHeader(headers["x-forwarded-for"]).split(",")[0].trim() ||
+      extractHeader(headers["true-client-ip"]) ||
+      (this as http.IncomingMessage).socket.remoteAddress ||
+      ""
     );
   },
 });
