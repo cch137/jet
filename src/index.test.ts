@@ -20,7 +20,7 @@ server.get("/:a/:b/test", (req, res) => {
 });
 
 server.use((req, res, next) => {
-  console.log(req.ip, req.method, req.url);
+  console.log(req.ip, req.method, req.url, req.headers);
   next();
 });
 server.get("/home1", router1);
