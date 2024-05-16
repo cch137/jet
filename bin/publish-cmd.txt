@@ -1,0 +1,6 @@
+rmdir dist/
+tsc
+cp package.json dist/package.json
+cd dist/
+npm publish --access public
+cd ../

@@ -1,4 +1,10 @@
 {
+  "name": "jet.js",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cch137/jet"
+  },
   "scripts": {
     "devbuild": "tsc -w",
     "devstart": "nodemon ./dist/index.test.js",

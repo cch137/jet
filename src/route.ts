@@ -6,12 +6,13 @@ type RouteHandler<Params extends ParamsDictionary = {}> = (
   res: JetResponse,
   next: RouteNextHandler
 ) => void;
+type RouteRemover = () => void;
 export type RouteDefiner = {
   <P extends string | undefined>(
     pathPattern: P,
     handler: Route | RouteHandler<RouteParameters<P extends string ? P : "">>
-  ): void;
-  (handler: Route | RouteHandler): void;
+  ): RouteRemover;
+  (handler: Route | RouteHandler): RouteRemover;
 };
 
 export type ParamsDictionary = {
@@ -157,7 +158,7 @@ export default class Route extends RouteBase {
     next: RouteNextHandler,
     _root: string = ""
   ) {
-    const { stack } = this;
+    const stack = this.stack;
     const { method, url } = req;
     const root = _root + (this.pattern || "");
     if (stack.length === 0) return next();
@@ -193,7 +194,11 @@ export default class Route extends RouteBase {
     const method = isString(arg1) && isString(arg2) ? arg1 : void 0;
     const pattern = [arg2, arg1].find(isString) || "";
     const handler = [arg3, arg2].find(isRouteBaseOrRouteHandler);
-    if (handler) this.stack.push(new RouteBase(method, pattern, handler));
-    return this;
+    const rb = new RouteBase(method, pattern, handler);
+    const stack = this.stack;
+    stack.push(rb);
+    return () => {
+      if (stack.includes(rb)) stack.splice(stack.indexOf(rb), 1);
+    };
   }
 }

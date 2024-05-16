@@ -3,7 +3,7 @@ import Route from "./route";
 
 export { Route };
 
-export class JetServer extends http.Server {
+export default class Jet extends http.Server {
   private readonly route = new Route();
   readonly use = this.route.use;
   readonly get = this.route.get;

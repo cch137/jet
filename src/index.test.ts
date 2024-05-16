@@ -1,6 +1,6 @@
-import { JetServer, Route } from ".";
+import Jet, { Route } from ".";
 
-const server = new JetServer();
+const jet = new Jet();
 const router1 = new Route();
 
 for (let i = 1; i < 1000000; i++) {
@@ -9,24 +9,23 @@ for (let i = 1; i < 1000000; i++) {
   });
 }
 
-server.get("/users/:userId?", function (req, res) {
+jet.get("/users/:userId?", function (req, res) {
   res.send(`user: ${req.params.userId || ""}`);
 });
 
-server.get("/:a/:b/test", (req, res) => {
+jet.get("/:a/:b/test", (req, res) => {
   console.log(req.params);
   res.send("OK");
 });
 
-server.use((req, res, next) => {
-  console.log(req.ip, req.method, req.url, req.rawHeaders, req.headers);
+jet.use((req, res, next) => {
   next();
 });
-server.get("/home1", router1);
-server.get("/home2", router1);
+jet.get("/home1", router1);
+jet.get("/home2", router1);
 
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, async () => {
+jet.listen(PORT, async () => {
   console.log(`listening on port http://localhost:${PORT}`);
 });
