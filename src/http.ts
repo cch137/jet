@@ -7,8 +7,10 @@ declare module "http" {
     params: P;
   }
   interface ServerResponse {
+    send(data: any): this;
+    json(data: any): this;
+    type(type: string): this;
     status(code?: number, message?: string): this;
-    send(data: any): Promise<this>;
   }
 }
 
@@ -32,20 +34,21 @@ Object.defineProperty(http.IncomingMessage.prototype, "ip", {
 
 http.ServerResponse.prototype.send = function send(data: any) {
   if (
-    !(
-      typeof data === "string" ||
-      data instanceof Uint8Array ||
-      data instanceof Buffer
-    )
+    typeof data === "string" ||
+    data instanceof Uint8Array ||
+    data instanceof Buffer
   ) {
-    data = JSON.stringify(data);
+    this.write(data);
+    this.end();
+    return this;
   }
-  return new Promise((resolve, reject) => {
-    this.write(data, (e) => {
-      if (e) reject(e);
-    });
-    this.end(() => resolve(this));
-  });
+  return this.json(data);
+};
+
+http.ServerResponse.prototype.json = function json(data: any) {
+  this.write(JSON.stringify(data));
+  this.end();
+  return this;
 };
 
 http.ServerResponse.prototype.status = function status(
@@ -54,6 +57,11 @@ http.ServerResponse.prototype.status = function status(
 ) {
   if (typeof code === "number") this.statusCode = code;
   if (typeof message === "string") this.statusMessage = message;
+  return this;
+};
+
+http.ServerResponse.prototype.type = function type(type: string) {
+  // this.setHeader('Content-Type', 'application/json');
   return this;
 };
 

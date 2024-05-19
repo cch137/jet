@@ -25,4 +25,10 @@ const PORT = process.env.PORT || 3000;
 
 jet.listen(PORT, async () => {
   console.log(`listening on port http://localhost:${PORT}`);
+  setTimeout(async () => {
+    const res = await fetch("http://localhost:3000/home1/room3", {
+      headers: { host: "https://www.google.com" },
+    });
+    console.log(await res.text());
+  }, 1000);
 });
