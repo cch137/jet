@@ -1,7 +1,7 @@
 import type { JetRequest, JetResponse } from "./http";
 
-type RouteNextHandler = () => void;
-type RouteHandler<Params extends ParamsDictionary = {}> = (
+export type RouteNextHandler = () => void;
+export type RouteHandler<Params extends ParamsDictionary = {}> = (
   req: JetRequest<Params>,
   res: JetResponse,
   next: RouteNextHandler
@@ -10,9 +10,11 @@ type RouteRemover = () => void;
 export type RouteDefiner = {
   <P extends string | undefined>(
     pathPattern: P,
-    handler: Route | RouteHandler<RouteParameters<P extends string ? P : "">>
+    handler:
+      | RouteBase
+      | RouteHandler<RouteParameters<P extends string ? P : "">>
   ): RouteRemover;
-  (handler: Route | RouteHandler): RouteRemover;
+  (handler: RouteBase | RouteHandler): RouteRemover;
 };
 
 export type ParamsDictionary = {
@@ -93,7 +95,7 @@ const matchRoute = (
   return { isMatch: true };
 };
 
-class RouteBase {
+export class RouteBase {
   readonly method?: string;
   readonly pattern?: string;
   readonly handler?: RouteHandler | RouteBase;
@@ -112,12 +114,13 @@ class RouteBase {
     req: JetRequest,
     res: JetResponse,
     next: RouteNextHandler,
-    root?: string
+    root?: string,
+    currentPattern?: string
   ): void {
     const handler = this.handler;
     if (!handler) return next();
     if (handler instanceof RouteBase)
-      return handler.handle(req, res, next, root);
+      return handler.handle(req, res, next, root, currentPattern);
     return handler(req, res, next);
   }
 }
@@ -157,26 +160,27 @@ export default class Route extends RouteBase {
     req: JetRequest,
     res: JetResponse,
     next: RouteNextHandler,
-    _root: string = ""
+    _root: string = "",
+    _currentPattern: string = ""
   ) {
     const stack = this.stack;
-    const { method, url } = req;
-    const root = _root + (this.pattern || "");
+    const { method, _url } = req;
+    const root = `${_currentPattern}${this.pattern || ""}`;
     if (stack.length === 0) return next();
     for (const handler of stack) {
-      const currPattern = root + handler.pattern || "";
+      const currPattern = `${root}${handler.pattern || ""}`;
       const { isMatch, params } = matchRoute(
         handler.method,
         currPattern,
         method,
-        url,
-        handler.handler instanceof Route || !handler.pattern
+        decodeURIComponent(_url.pathname),
+        handler.handler instanceof RouteBase || !handler.pattern
       );
       if (isMatch) {
         try {
           await new Promise<void>((resolve, reject) => {
             req.params = params || {};
-            handler.handle(req, res, resolve, currPattern);
+            handler.handle(req, res, resolve, root, currPattern);
             req.once("end", reject);
           });
         } catch {

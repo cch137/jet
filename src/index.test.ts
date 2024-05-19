@@ -1,4 +1,5 @@
 import Jet, { Route } from ".";
+import serveStatic from "./static";
 
 const jet = new Jet();
 const router1 = new Route();
@@ -17,6 +18,12 @@ jet.get("/:a/:b/test", (req, res) => {
   console.log(req.params);
   res.send("OK");
 });
+
+jet.get("/你好世界", (req, res) => {
+  res.send("Hello World!");
+});
+
+jet.use("/static/", serveStatic("testdir", { index: ["index.html"] }));
 
 jet.get("/home1", router1);
 jet.get("/home2", router1);
