@@ -18,7 +18,7 @@ export default class Jet extends http.Server {
 
   constructor(options: http.ServerOptions = {}) {
     super(options, (req, res) => {
-      console.log("Hi", new URL(req.url || "", "http://" + req.headers.host));
+      console.log("Hi", req.headers);
       this.route.handle(req, res, () => {
         res.status(404).end();
       });
