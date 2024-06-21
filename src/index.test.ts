@@ -37,6 +37,11 @@ jet.static("/static/", path.join(process.cwd(), "testdir"), {
 jet.get("/home1", router1);
 jet.get("/home2", router1);
 
+jet.post("/form", (req, res) => {
+  console.log("form:", req.body);
+  res.send("OK");
+});
+
 jet.ws("/ws", (soc, req) => {
   console.log("socket connected from server");
   soc.send("Hi Socket!");
@@ -49,10 +54,15 @@ jet.listen(PORT, async () => {
   console.log(`listening on port http://localhost:${PORT}`);
   setTimeout(async () => {
     const res = await fetch(
-      `http://localhost:3000/home`,
+      `http://localhost:3000/form`,
       // `http://localhost:3000/${encodeURIComponent("你好世界")}`,
       {
-        headers: { host: "https://www.google.com" },
+        method: "POST",
+        body: JSON.stringify({ Hi: 88 }),
+        headers: {
+          Host: "https://www.google.com",
+          "Content-Type": "application/json",
+        },
       }
     );
     console.log("request text:", await res.text());

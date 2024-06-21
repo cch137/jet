@@ -333,7 +333,7 @@ export default class Route extends RouteBase {
           await new Promise<void>((resolve, reject) => {
             req.params = params || {};
             handler.handle(req, res, resolve, root, currPattern);
-            req.once("end", reject);
+            res.once("close", reject);
           });
         } catch {
           return;

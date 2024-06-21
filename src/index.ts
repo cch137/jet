@@ -1,9 +1,14 @@
 import http, { JetWSServer } from "./http.js";
 import Route from "./route.js";
+import bodyParser from "./body-parser.js";
 
-export { Route };
+export { Route, bodyParser };
 
 export default class Jet extends http.Server {
+  static readonly bodyParser = bodyParser;
+  static readonly Route = Route;
+
+  readonly wss = new JetWSServer({ noServer: true });
   private readonly route = new Route();
   readonly use = this.route.use;
   readonly get = this.route.get;
@@ -17,8 +22,6 @@ export default class Jet extends http.Server {
   readonly options = this.route.options;
   readonly ws = this.route.ws;
   readonly static = this.route.static;
-
-  readonly wss = new JetWSServer({ noServer: true });
 
   constructor(options: http.ServerOptions = {}) {
     super(options, (req, res) => {

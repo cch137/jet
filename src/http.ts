@@ -12,6 +12,7 @@ declare module "http" {
     readonly protocol: string;
     params: P;
     getHeader(name: string): string | undefined;
+    body: any;
   }
   interface ServerResponse {
     send(data: any): this;
