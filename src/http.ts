@@ -1,8 +1,9 @@
 import http from "http";
 import type { Duplex } from "node:stream";
 import { WebSocket, WebSocketServer } from "ws";
+import mime from "mime";
 
-import type { ParamsDictionary } from "./route";
+import type { ParamsDictionary } from "./route.js";
 
 declare module "http" {
   interface IncomingMessage<P extends ParamsDictionary = {}> {
@@ -91,15 +92,15 @@ http.ServerResponse.prototype.status = function status(
   code?: number,
   message?: string
 ) {
-  if (typeof code === "number") this.statusCode = code;
-  if (typeof message === "string") this.statusMessage = message;
+  if (code) this.statusCode = code;
+  if (message) this.statusMessage = message;
   return this;
 };
 
-// http.ServerResponse.prototype.type = function type(type: string) {
-//   // this.setHeader("Content-Type", "application/json");
-//   return this;
-// };
+http.ServerResponse.prototype.type = function type(type: string) {
+  this.setHeader("Content-Type", mime.getType(type) || type);
+  return this;
+};
 
 type RedirectOptions = Partial<{
   code: number;

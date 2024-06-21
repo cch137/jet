@@ -1,12 +1,13 @@
-import Jet, { Route } from ".";
-import serveStatic from "./static";
+import Jet, { Route } from "./index.js";
 import { WebSocket } from "ws";
+import path from "path";
 
 const jet = new Jet();
 const router1 = new Route();
 
 jet.get("/home", (req, res) => {
-  res.send("Hello World!");
+  res.type("text/html;charset=utf8");
+  res.send('["Hello World!"]');
 });
 
 for (let i = 1; i < 1000000; i++) {
@@ -28,7 +29,10 @@ jet.get("/你好世界", (req, res) => {
   res.send("Hello World!");
 });
 
-jet.use("/static/", serveStatic("testdir", { index: ["index.html"] }));
+jet.static("/static/", path.join(process.cwd(), "testdir"), {
+  index: ["index.html"],
+});
+// jet.use("/static/", serveStatic("testdir", { index: ["index.html"] }));
 
 jet.get("/home1", router1);
 jet.get("/home2", router1);
@@ -45,12 +49,14 @@ jet.listen(PORT, async () => {
   console.log(`listening on port http://localhost:${PORT}`);
   setTimeout(async () => {
     const res = await fetch(
-      `http://localhost:3000/${encodeURIComponent("你好世界")}`,
+      `http://localhost:3000/home`,
+      // `http://localhost:3000/${encodeURIComponent("你好世界")}`,
       {
         headers: { host: "https://www.google.com" },
       }
     );
     console.log("request text:", await res.text());
+    console.log("request headers:", res.headers.get("Content-Type"));
     const ws = new WebSocket("ws://localhost:3000/ws");
     ws.addEventListener("open", () => {
       console.log("WS connected.");

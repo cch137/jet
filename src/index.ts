@@ -1,5 +1,5 @@
-import http, { JetWSServer } from "./http";
-import Route from "./route";
+import http, { JetWSServer } from "./http.js";
+import Route from "./route.js";
 
 export { Route };
 
@@ -16,6 +16,7 @@ export default class Jet extends http.Server {
   readonly connect = this.route.connect;
   readonly options = this.route.options;
   readonly ws = this.route.ws;
+  readonly static = this.route.static;
 
   readonly wss = new JetWSServer({ noServer: true });
 

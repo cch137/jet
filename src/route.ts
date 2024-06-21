@@ -1,10 +1,14 @@
+import { statSync, existsSync } from "fs";
+import { resolve, relative, join } from "path";
+import send from "send";
+
 import type {
   JetRequest,
   JetResponse,
   JetWSServer,
   JetSocket,
   Duplex,
-} from "./http";
+} from "./http.js";
 
 export type RouteNextHandler = () => void;
 export type RouteHandler<Params extends ParamsDictionary = {}> = (
@@ -188,6 +192,59 @@ export class WSRouteBase {
   }
 }
 
+export type ServeStaticOptions = Partial<{
+  index: string | string[];
+}>;
+
+export class StaticRoute extends RouteBase {
+  index: string[];
+  root: string;
+
+  constructor(
+    root: string,
+    options: ServeStaticOptions = {},
+    handler?: RouteHandler
+  ) {
+    super(void 0, void 0, handler);
+    const { index } = options;
+    this.index = index ? (Array.isArray(index) ? index : [index]) : [];
+    this.root = resolve(root);
+  }
+
+  handle(
+    req: JetRequest,
+    res: JetResponse,
+    next: RouteNextHandler,
+    root: string = "",
+    currentPattern: string = ""
+  ) {
+    try {
+      const pathaname = req._url.pathname;
+      const filepath = relative(currentPattern, pathaname);
+      const absFilepath = join(this.root, filepath);
+      if (existsSync(absFilepath)) {
+        const stat = statSync(absFilepath);
+        if (stat.isFile()) return send(req, absFilepath).pipe(res);
+        const { index } = this;
+        if (stat.isDirectory() && index.length) {
+          for (const filename of index) {
+            const indexFilepath = join(absFilepath, filename);
+            const stat = statSync(indexFilepath);
+            if (stat.isFile())
+              return pathaname.endsWith("/")
+                ? send(req, indexFilepath).pipe(res)
+                : res.redirect(`${pathaname}/`);
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      return res.status(500).end();
+    }
+    return super.handle(req, res, next, root, currentPattern);
+  }
+}
+
 export default class Route extends RouteBase {
   private readonly stack: RouteBase[] = [];
   private readonly wsStack: WSRouteBase[] = [];
@@ -203,6 +260,24 @@ export default class Route extends RouteBase {
   trace: RouteDefiner;
   patch: RouteDefiner;
   ws: WSRouteDefiner;
+
+  static(root: string, options?: ServeStaticOptions): RouteRemover;
+  static(
+    patern: string | undefined,
+    root: string,
+    options?: ServeStaticOptions
+  ): RouteRemover;
+  static(
+    arg1?: string,
+    arg2?: string | ServeStaticOptions,
+    arg3?: ServeStaticOptions
+  ) {
+    const hasPattern = isString(arg2);
+    const pattern = hasPattern ? arg1 : void 0;
+    const root = hasPattern ? arg2 : arg1;
+    const options = hasPattern ? arg3 : arg2;
+    return this.use(pattern, new StaticRoute(root!, options));
+  }
 
   constructor(handler?: RouteHandler) {
     super();
