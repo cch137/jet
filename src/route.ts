@@ -196,7 +196,7 @@ export type ServeStaticOptions = Partial<{
   index: string | string[];
 }>;
 
-export class StaticRoute extends RouteBase {
+export class StaticRouter extends RouteBase {
   index: string[];
   root: string;
 
@@ -245,7 +245,7 @@ export class StaticRoute extends RouteBase {
   }
 }
 
-export default class Route extends RouteBase {
+export default class Router extends RouteBase {
   private readonly stack: RouteBase[] = [];
   private readonly wsStack: WSRouteBase[] = [];
 
@@ -276,7 +276,7 @@ export default class Route extends RouteBase {
     const pattern = hasPattern ? arg1 : void 0;
     const root = hasPattern ? arg2 : arg1;
     const options = hasPattern ? arg3 : arg2;
-    return this.use(pattern, new StaticRoute(root!, options));
+    return this.use(pattern, new StaticRouter(root!, options));
   }
 
   constructor(handler?: RouteHandler) {

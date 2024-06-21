@@ -1,15 +1,15 @@
 import http, { JetWSServer } from "./http.js";
-import Route from "./route.js";
+import Router from "./route.js";
 import bodyParser from "./body-parser.js";
 
-export { Route, bodyParser };
+export { Router as Route, bodyParser };
 
 export default class Jet extends http.Server {
   static readonly bodyParser = bodyParser;
-  static readonly Route = Route;
+  static readonly Router = Router;
 
   readonly wss = new JetWSServer({ noServer: true });
-  private readonly route = new Route();
+  private readonly route = new Router();
   readonly use = this.route.use;
   readonly get = this.route.get;
   readonly post = this.route.post;
