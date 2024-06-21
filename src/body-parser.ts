@@ -65,7 +65,9 @@ export default async function bodyParser(
   res: JetResponse,
   next: () => void
 ) {
-  readBody(req)
-    .then((body) => (req.body = body))
-    .finally(next);
+  try {
+    req.body = await readBody(req);
+  } finally {
+    next();
+  }
 }
