@@ -1,6 +1,8 @@
 import http from "http";
-import { type ParamsDictionary } from "./route";
-import { computedPropDefine } from "./utils";
+import type { Duplex } from "node:stream";
+import { WebSocket, WebSocketServer } from "ws";
+
+import type { ParamsDictionary } from "./route";
 
 declare module "http" {
   interface IncomingMessage<P extends ParamsDictionary = {}> {
@@ -30,30 +32,39 @@ http.IncomingMessage.prototype.getHeader = function getHeader(name: string) {
   return extractHeader(this.headers[name]);
 };
 
-computedPropDefine(http.IncomingMessage.prototype, "_url", function (obj) {
-  return new URL(obj.url || "", `${obj.protocol}://${obj.getHeader("host")}`);
+Object.defineProperty(http.IncomingMessage.prototype, "_url", {
+  get: function () {
+    return new URL(
+      this.url || "",
+      `${this.protocol}://${this.getHeader("host")}`
+    );
+  },
 });
 
-computedPropDefine(http.IncomingMessage.prototype, "protocol", function (obj) {
-  const cfVisitorMatched = (obj.getHeader("cf-visitor") || "").match(
-    /"scheme":"(.*)"/
-  );
-  return (
-    (cfVisitorMatched
-      ? cfVisitorMatched[1]
-      : obj.getHeader("x-forwarded-proto")) || "http"
-  );
+Object.defineProperty(http.IncomingMessage.prototype, "protocol", {
+  get: function () {
+    const cfVisitorMatched = (this.getHeader("cf-visitor") || "").match(
+      /"scheme":"(.*)"/
+    );
+    return (
+      (cfVisitorMatched
+        ? cfVisitorMatched[1]
+        : this.getHeader("x-forwarded-proto")) || "http"
+    );
+  },
 });
 
-computedPropDefine(http.IncomingMessage.prototype, "ip", function (obj) {
-  const headers = obj.headers;
-  return (
-    extractHeader(headers["cf-connecting-ip"]) ||
-    (extractHeader(headers["x-forwarded-for"]) || "").split(",")[0].trim() ||
-    extractHeader(headers["true-client-ip"]) ||
-    obj.socket.remoteAddress ||
-    ""
-  );
+Object.defineProperty(http.IncomingMessage.prototype, "ip", {
+  get: function () {
+    const headers = this.headers;
+    return (
+      extractHeader(headers["cf-connecting-ip"]) ||
+      (extractHeader(headers["x-forwarded-for"]) || "").split(",")[0].trim() ||
+      extractHeader(headers["true-client-ip"]) ||
+      this.socket.remoteAddress ||
+      ""
+    );
+  },
 });
 
 http.ServerResponse.prototype.send = function send(data: any) {
@@ -85,10 +96,10 @@ http.ServerResponse.prototype.status = function status(
   return this;
 };
 
-http.ServerResponse.prototype.type = function type(type: string) {
-  // this.setHeader('Content-Type', 'application/json');
-  return this;
-};
+// http.ServerResponse.prototype.type = function type(type: string) {
+//   // this.setHeader("Content-Type", "application/json");
+//   return this;
+// };
 
 type RedirectOptions = Partial<{
   code: number;
@@ -111,5 +122,7 @@ export type JetRequest<P extends ParamsDictionary = {}> =
 export type JetResponse = http.ServerResponse<http.IncomingMessage> & {
   req: http.IncomingMessage;
 };
+
+export { WebSocketServer as JetWSServer, WebSocket as JetSocket, Duplex };
 
 export default http;

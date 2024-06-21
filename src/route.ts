@@ -1,4 +1,10 @@
-import type { JetRequest, JetResponse } from "./http";
+import type {
+  JetRequest,
+  JetResponse,
+  JetWSServer,
+  JetSocket,
+  Duplex,
+} from "./http";
 
 export type RouteNextHandler = () => void;
 export type RouteHandler<Params extends ParamsDictionary = {}> = (
@@ -6,15 +12,35 @@ export type RouteHandler<Params extends ParamsDictionary = {}> = (
   res: JetResponse,
   next: RouteNextHandler
 ) => void;
+export type WSRouteHandler<Params extends ParamsDictionary = {}> = (
+  soc: JetSocket,
+  req: JetRequest<Params>,
+  head: Buffer
+) => void;
 type RouteRemover = () => void;
 export type RouteDefiner = {
   <P extends string | undefined>(
     pathPattern: P,
-    handler:
-      | RouteBase
-      | RouteHandler<RouteParameters<P extends string ? P : "">>
+    handler: RouteHandler<RouteParameters<P extends string ? P : "">>
   ): RouteRemover;
-  (handler: RouteBase | RouteHandler): RouteRemover;
+  <P extends string | undefined>(
+    pathPattern: P,
+    handler: RouteBase
+  ): RouteRemover;
+  (handler: RouteHandler): RouteRemover;
+  (handler: RouteBase): RouteRemover;
+};
+export type WSRouteDefiner = {
+  <P extends string | undefined>(
+    pathPattern: P,
+    handler: WSRouteHandler<RouteParameters<P extends string ? P : "">>
+  ): RouteRemover;
+  <P extends string | undefined>(
+    pathPattern: P,
+    handler: WSRouteBase
+  ): RouteRemover;
+  (handler: WSRouteHandler): RouteRemover;
+  (handler: WSRouteBase): RouteRemover;
 };
 
 export type ParamsDictionary = {
@@ -50,6 +76,11 @@ const isRouteBaseOrRouteHandler = (
 ): pattern is RouteHandler | RouteBase =>
   typeof pattern === "function" || pattern instanceof RouteBase;
 
+const isWSRouteBaseOrWSRouteHandler = (
+  pattern: any
+): pattern is WSRouteHandler | WSRouteBase =>
+  typeof pattern === "function" || pattern instanceof WSRouteBase;
+
 const matchRoute = (
   routeMethod?: string,
   routePattern: string = "",
@@ -57,42 +88,37 @@ const matchRoute = (
   url?: string,
   matchStart = false
 ): { isMatch: boolean; params?: ParamsDictionary } => {
-  const allowMethod = !routeMethod || routeMethod === method;
-  if (!allowMethod) return { isMatch: false };
-  if (routePattern) {
-    const isParamsPattern = routePattern.includes(":");
-    if (isParamsPattern) {
-      if (!url) return { isMatch: false };
-      const routeParts = routePattern.split("/");
-      const urlParts = url.split("/");
-      const partLength = routeParts.length;
-      if (!matchStart && partLength !== urlParts.length)
-        return { isMatch: false };
-      const params: ParamsDictionary = {};
-      for (let i = 0; i < partLength; i++) {
-        const routePart = routeParts[i];
-        const urlPart = urlParts[i];
-        const isParamPart = routePart.startsWith(":");
-        if (isParamPart) {
-          const isOptional = routePart.endsWith("?");
-          const paramName = routePart.substring(
-            1,
-            routePart.length - (isOptional ? 1 : 0)
-          );
-          if (!isOptional && !urlPart) return { isMatch: false };
-          params[paramName] = urlPart;
-        } else if (urlPart !== routePart) return { isMatch: false };
-      }
-      return { isMatch: true, params };
-    }
-    const patternMatched = url
-      ? matchStart
-        ? url.startsWith(routePattern)
-        : url === routePattern
-      : true;
-    return { isMatch: patternMatched };
+  if (!(!routeMethod || routeMethod === method)) return { isMatch: false };
+  if (!routePattern) return { isMatch: true };
+  if (!routePattern.includes(":"))
+    return {
+      isMatch: url
+        ? matchStart
+          ? url.startsWith(routePattern)
+          : url === routePattern
+        : true,
+    };
+  if (!url) return { isMatch: false };
+  const routeParts = routePattern.split("/");
+  const urlParts = url.split("/");
+  const partLength = routeParts.length;
+  if (!matchStart && partLength !== urlParts.length) return { isMatch: false };
+  const params: ParamsDictionary = {};
+  for (let i = 0; i < partLength; i++) {
+    const routePart = routeParts[i];
+    const urlPart = urlParts[i];
+    const isParamPart = routePart.startsWith(":");
+    if (isParamPart) {
+      const isOptional = routePart.endsWith("?");
+      const paramName = routePart.substring(
+        1,
+        routePart.length - (isOptional ? 1 : 0)
+      );
+      if (!isOptional && !urlPart) return { isMatch: false };
+      params[paramName] = urlPart;
+    } else if (urlPart !== routePart) return { isMatch: false };
   }
-  return { isMatch: true };
+  return { isMatch: true, params };
 };
 
 export class RouteBase {
@@ -125,8 +151,46 @@ export class RouteBase {
   }
 }
 
+export class WSRouteBase {
+  readonly pattern?: string;
+  readonly handler?: WSRouteHandler | WSRouteBase;
+
+  constructor(pattern?: string, handler?: WSRouteHandler | WSRouteBase) {
+    this.pattern = pattern;
+    this.handler = handler;
+  }
+
+  handleSocket(
+    wss: JetWSServer,
+    soc: Duplex,
+    req: JetRequest,
+    head: Buffer,
+    next: RouteNextHandler,
+    root?: string,
+    currentPattern?: string
+  ): void {
+    const handler = this.handler;
+    if (!handler) return next();
+    if (handler instanceof WSRouteBase)
+      return handler.handleSocket(
+        wss,
+        soc,
+        req,
+        head,
+        next,
+        root,
+        currentPattern
+      );
+    wss.handleUpgrade(req, soc, head, (ws) => {
+      wss.emit("connection", ws, req, head);
+      handler(ws, req, head);
+    });
+  }
+}
+
 export default class Route extends RouteBase {
   private readonly stack: RouteBase[] = [];
+  private readonly wsStack: WSRouteBase[] = [];
 
   use: RouteDefiner;
   get: RouteDefiner;
@@ -138,6 +202,7 @@ export default class Route extends RouteBase {
   connect: RouteDefiner;
   trace: RouteDefiner;
   patch: RouteDefiner;
+  ws: WSRouteDefiner;
 
   constructor(handler?: RouteHandler) {
     super();
@@ -153,6 +218,18 @@ export default class Route extends RouteBase {
     this.options = (a: A, b?: B) => this.addHandler("OPTIONS", a, b);
     this.patch = (a: A, b?: B) => this.addHandler("PATCH", a, b);
     this.connect = (a: A, b?: B) => this.addHandler("CONNECT", a, b);
+    type A2 = string | B2;
+    type B2 = WSRouteHandler | WSRouteBase;
+    this.ws = (a: A2, b?: B2) => {
+      const pattern = isString(a) ? a : "";
+      const handler = [a, b].find(isWSRouteBaseOrWSRouteHandler);
+      const rb = new WSRouteBase(pattern, handler);
+      const stack = this.wsStack;
+      stack.push(rb);
+      return () => {
+        if (stack.includes(rb)) stack.splice(stack.indexOf(rb), 1);
+      };
+    };
     if (handler) this.use(handler);
   }
 
@@ -182,6 +259,51 @@ export default class Route extends RouteBase {
             req.params = params || {};
             handler.handle(req, res, resolve, root, currPattern);
             req.once("end", reject);
+          });
+        } catch {
+          return;
+        }
+      }
+    }
+    return next();
+  }
+
+  async handleSocket(
+    wss: JetWSServer,
+    soc: Duplex,
+    req: JetRequest,
+    head: Buffer,
+    next: RouteNextHandler,
+    _root: string = "",
+    _currentPattern: string = ""
+  ) {
+    const stack = this.wsStack;
+    const { _url } = req;
+    const root = `${_currentPattern}${this.pattern || ""}`;
+    if (stack.length === 0) return next();
+    for (const handler of stack) {
+      const currPattern = `${root}${handler.pattern || ""}`;
+      const { isMatch, params } = matchRoute(
+        undefined,
+        currPattern,
+        undefined,
+        decodeURIComponent(_url.pathname),
+        handler.handler instanceof WSRouteBase || !handler.pattern
+      );
+      if (isMatch) {
+        try {
+          await new Promise<void>((resolve, reject) => {
+            req.params = params || {};
+            handler.handleSocket(
+              wss,
+              soc,
+              req,
+              head,
+              resolve,
+              root,
+              currPattern
+            );
+            soc.once("end", reject);
           });
         } catch {
           return;

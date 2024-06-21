@@ -1,4 +1,4 @@
-import http from "./http";
+import http, { JetWSServer } from "./http";
 import Route from "./route";
 
 export { Route };
@@ -15,6 +15,9 @@ export default class Jet extends http.Server {
   readonly patch = this.route.patch;
   readonly connect = this.route.connect;
   readonly options = this.route.options;
+  readonly ws = this.route.ws;
+
+  readonly wss = new JetWSServer({ noServer: true });
 
   constructor(options: http.ServerOptions = {}) {
     super(options, (req, res) => {
@@ -22,6 +25,10 @@ export default class Jet extends http.Server {
         res.status(404).end();
       });
     });
-    this.on("upgrade", (req, socket, head) => {});
+    this.on("upgrade", (req, soc, head) => {
+      this.route.handleSocket(this.wss, soc, req, head, () => {
+        soc.destroy();
+      });
+    });
   }
 }
