@@ -3,7 +3,7 @@ import type { Duplex } from "node:stream";
 import { WebSocket, WebSocketServer } from "ws";
 import mime from "mime";
 
-import type { ParamsDictionary } from "./route.js";
+import type { ParamsDictionary } from "./route";
 
 declare module "http" {
   interface IncomingMessage<P extends ParamsDictionary = {}> {

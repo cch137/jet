@@ -11,3 +11,4 @@ os.system(' && '.join([
   'cd dist/',
   'npm publish --access public',
 ]))
+os.remove('dist/package.json')

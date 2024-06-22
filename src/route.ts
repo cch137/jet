@@ -8,7 +8,7 @@ import type {
   JetWSServer,
   JetSocket,
   Duplex,
-} from "./http.js";
+} from "./http";
 
 export type RouteNextHandler = () => void;
 export type RouteHandler<Params extends ParamsDictionary = {}> = (
