@@ -1,5 +1,5 @@
 import qs from "qs";
-import type { JetRequest, JetResponse } from "./http";
+import type { JetRequest, JetResponse } from "./http.js";
 
 const formType = /application\/x-www-form-urlencoded/;
 const jsonType = /application\/json/;

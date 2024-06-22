@@ -1,4 +1,4 @@
-import type { JetRequest, JetResponse, JetSocket } from "./http";
+import type { JetRequest, JetResponse, JetSocket } from "./http.js";
 import http, { JetWSServer } from "./http.js";
 import Router from "./route.js";
 import bodyParser from "./body-parser.js";
