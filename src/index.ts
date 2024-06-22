@@ -1,8 +1,10 @@
 import http, { JetWSServer } from "./http.js";
+import type { JetRequest, JetResponse, JetSocket } from "./http.js";
 import Router from "./route.js";
 import bodyParser from "./body-parser.js";
 
-export { Router , bodyParser };
+export type { JetRequest, JetResponse, JetSocket };
+export { Router, bodyParser };
 
 export default class Jet extends http.Server {
   static readonly bodyParser = bodyParser;
