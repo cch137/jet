@@ -119,11 +119,11 @@ http.ServerResponse.prototype.redirect = function redirect(
 };
 
 export type JetRequest<P extends ParamsDictionary = {}> =
-  http.IncomingMessage<P>;
+  http.IncomingMessage<P> & NodeJS.ReadableStream;
 
 export type JetResponse = http.ServerResponse<http.IncomingMessage> & {
   req: http.IncomingMessage;
-};
+} & NodeJS.WritableStream;
 
 export { WebSocketServer as JetWSServer, WebSocket as JetSocket, Duplex };
 
