@@ -2,6 +2,8 @@ dist/
 node_modules/
 package-lock.json
 
+*.test.ts
+
 # dotenv environment variable files
 .env
 .env.development.local
