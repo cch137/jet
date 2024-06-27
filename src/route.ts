@@ -2,13 +2,8 @@ import { statSync, existsSync } from "fs";
 import { resolve, relative, join } from "path";
 import send from "send";
 
-import type {
-  JetRequest,
-  JetResponse,
-  JetWSServer,
-  JetSocket,
-  Duplex,
-} from "./http.js";
+import type { JetRequest, JetResponse } from "./http.js";
+import type { JetWSServer, JetSocket, Duplex } from "./ws.js";
 
 export type RouteNextHandler = () => void;
 export type RouteHandler<Params extends ParamsDictionary = {}> = (
@@ -73,6 +68,8 @@ type RouteParameters<Route extends string> = string extends Route
         : unknown)
   : {};
 
+const HANDLED = Symbol("handled");
+
 const isString = (s: any): s is string => typeof s === "string";
 
 const isRouteBaseOrRouteHandler = (
@@ -92,6 +89,7 @@ const matchRoute = (
   url?: string,
   matchStart = false
 ): { isMatch: boolean; params?: ParamsDictionary } => {
+  routePattern = routePattern.replace(/(\/|\\)+/, "/");
   if (!(!routeMethod || routeMethod === method)) return { isMatch: false };
   if (!routePattern) return { isMatch: true };
   if (!routePattern.includes(":"))
@@ -185,9 +183,11 @@ export class WSRouteBase {
         root,
         currentPattern
       );
-    wss.handleUpgrade(req, soc, head, (ws) => {
+    wss.handleUpgrade(req, soc, head, (ws, req) => {
+      ws.on("close", () => (ws as JetSocket).rooms.clear());
       wss.emit("connection", ws, req, head);
-      handler(ws, req, head);
+      soc.emit(HANDLED);
+      handler(ws as JetSocket, req, head);
     });
   }
 }
@@ -332,8 +332,14 @@ export default class Router extends RouteBase {
         try {
           await new Promise<void>((resolve, reject) => {
             req.params = params || {};
-            handler.handle(req, res, resolve, root, currPattern);
             res.once("close", reject);
+            handler.handle(
+              req,
+              res,
+              () => (resolve(), res.off("close", reject)),
+              root,
+              currPattern
+            );
           });
         } catch {
           return;
@@ -369,6 +375,7 @@ export default class Router extends RouteBase {
         try {
           await new Promise<void>((resolve, reject) => {
             req.params = params || {};
+            soc.once(HANDLED, reject);
             handler.handleSocket(
               wss,
               soc,
@@ -378,7 +385,6 @@ export default class Router extends RouteBase {
               root,
               currPattern
             );
-            soc.once("end", reject);
           });
         } catch {
           return;

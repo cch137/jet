@@ -1,6 +1,4 @@
 import http from "http";
-import type { Duplex } from "node:stream";
-import { WebSocket, WebSocketServer } from "ws";
 import mime from "mime";
 
 import type { ParamsDictionary } from "./route.js";
@@ -124,7 +122,5 @@ export type JetRequest<P extends ParamsDictionary = {}> =
 export type JetResponse = http.ServerResponse<http.IncomingMessage> & {
   req: http.IncomingMessage;
 } & NodeJS.WritableStream;
-
-export { WebSocketServer as JetWSServer, WebSocket as JetSocket, Duplex };
 
 export default http;
