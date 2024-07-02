@@ -5,54 +5,70 @@ import send from "send";
 import type { JetRequest, JetResponse } from "./http.js";
 import type { JetWSServer, JetSocket, Duplex } from "./ws.js";
 
+export type HTTPMethod =
+  | "GET"
+  | "HEAD"
+  | "OPTIONS"
+  | "POST"
+  | "PUT"
+  | "PATCH"
+  | "DELETE"
+  | "TRACE"
+  | "CONNECT";
+
+export type WSMethod = "WS";
+
 export type RouteNextHandler = () => void;
+
 export type RouteHandler<Params extends ParamsDictionary = {}> = (
   req: JetRequest<Params>,
   res: JetResponse,
   next: RouteNextHandler
 ) => void;
+
 export type WSRouteHandler<Params extends ParamsDictionary = {}> = (
   soc: JetSocket,
   req: JetRequest<Params>,
   head: Buffer
 ) => void;
-type RouteRemover = () => void;
+
 export type RouteDefiner = {
   <P extends string | undefined>(
     pathPattern: P,
     handler: RouteHandler<RouteParameters<P extends string ? P : "">>
-  ): RouteRemover;
-  <P extends string | undefined>(
-    pathPattern: P,
-    handler: RouteBase
-  ): RouteRemover;
-  (handler: RouteHandler): RouteRemover;
-  (handler: RouteBase): RouteRemover;
+  ): RouteBase;
+  <P extends string | undefined>(pathPattern: P, handler: RouteBase): RouteBase;
+  (handler: RouteHandler): RouteBase;
+  (handler: RouteBase): RouteBase;
 };
+
 export type WSRouteDefiner = {
   <P extends string | undefined>(
     pathPattern: P,
     handler: WSRouteHandler<RouteParameters<P extends string ? P : "">>
-  ): RouteRemover;
+  ): WSRouteBase;
   <P extends string | undefined>(
     pathPattern: P,
     handler: WSRouteBase
-  ): RouteRemover;
-  (handler: WSRouteHandler): RouteRemover;
-  (handler: WSRouteBase): RouteRemover;
+  ): WSRouteBase;
+  (handler: WSRouteHandler): WSRouteBase;
+  (handler: WSRouteBase): WSRouteBase;
 };
 
 export type ParamsDictionary = {
   [key: string]: string;
 };
+
 type RemoveTail<
   S extends string,
   Tail extends string
 > = S extends `${infer P}${Tail}` ? P : S;
+
 type GetRouteParameter<S extends string> = RemoveTail<
   RemoveTail<RemoveTail<S, `/${string}`>, `-${string}`>,
   `.${string}`
 >;
+
 type RouteParameters<Route extends string> = string extends Route
   ? ParamsDictionary
   : Route extends `${string}(${string}`
@@ -72,14 +88,10 @@ const HANDLED = Symbol("handled");
 
 const isString = (s: any): s is string => typeof s === "string";
 
-const isRouteBaseOrRouteHandler = (
-  pattern: any
-): pattern is RouteHandler | RouteBase =>
+const isHttpRoutable = (pattern: any): pattern is RouteHandler | RouteBase =>
   typeof pattern === "function" || pattern instanceof RouteBase;
 
-const isWSRouteBaseOrWSRouteHandler = (
-  pattern: any
-): pattern is WSRouteHandler | WSRouteBase =>
+const isWSRoutable = (pattern: any): pattern is WSRouteHandler | WSRouteBase =>
   typeof pattern === "function" || pattern instanceof WSRouteBase;
 
 const matchRoute = (
@@ -124,12 +136,12 @@ const matchRoute = (
 };
 
 export class RouteBase {
-  readonly method?: string;
+  readonly method?: HTTPMethod;
   readonly pattern?: string;
   readonly handler?: RouteHandler | RouteBase;
 
   constructor(
-    method?: string,
+    method?: HTTPMethod,
     pattern?: string,
     handler?: RouteHandler | RouteBase
   ) {
@@ -245,28 +257,48 @@ export class StaticRouter extends RouteBase {
   }
 }
 
+type HTTPRouteArg1 = string | HTTPRouteArg2;
+type HTTPRouteArg2 = RouteHandler | RouteBase;
+type WSRouteArg1 = string | WSRouteArg2;
+type WSRouteArg2 = WSRouteHandler | WSRouteBase;
+
 export default class Router extends RouteBase {
-  private readonly stack: RouteBase[] = [];
-  private readonly wsStack: WSRouteBase[] = [];
+  readonly stack: (RouteBase | WSRouteBase)[] = [];
 
-  use: RouteDefiner;
-  get: RouteDefiner;
-  post: RouteDefiner;
-  put: RouteDefiner;
-  delete: RouteDefiner;
-  head: RouteDefiner;
-  options: RouteDefiner;
-  connect: RouteDefiner;
-  trace: RouteDefiner;
-  patch: RouteDefiner;
-  ws: WSRouteDefiner;
+  constructor(handler?: RouteHandler) {
+    super();
+    if (handler) this.use(handler);
+  }
 
-  static(root: string, options?: ServeStaticOptions): RouteRemover;
+  use: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+    this.addHandler(void 0, a, b);
+  get: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+    this.addHandler("GET", a, b);
+  post: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+    this.addHandler("POST", a, b);
+  put: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+    this.addHandler("PUT", a, b);
+  delete: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+    this.addHandler("DELETE", a, b);
+  head: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+    this.addHandler("HEAD", a, b);
+  trace: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+    this.addHandler("TRACE", a, b);
+  options: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+    this.addHandler("OPTIONS", a, b);
+  patch: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+    this.addHandler("PATCH", a, b);
+  connect: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+    this.addHandler("CONNECT", a, b);
+  ws: WSRouteDefiner = (a: WSRouteArg1, b?: WSRouteArg2) =>
+    this.addHandler("WS", a, b);
+
+  static(root: string, options?: ServeStaticOptions): RouteBase;
   static(
     patern: string | undefined,
     root: string,
     options?: ServeStaticOptions
-  ): RouteRemover;
+  ): RouteBase;
   static(
     arg1?: string,
     arg2?: string | ServeStaticOptions,
@@ -277,35 +309,6 @@ export default class Router extends RouteBase {
     const root = hasPattern ? arg2 : arg1;
     const options = hasPattern ? arg3 : arg2;
     return this.use(pattern, new StaticRouter(root!, options));
-  }
-
-  constructor(handler?: RouteHandler) {
-    super();
-    type A = string | B;
-    type B = RouteHandler | RouteBase;
-    this.use = (a: A, b?: B) => this.addHandler(void 0, a, b);
-    this.get = (a: A, b?: B) => this.addHandler("GET", a, b);
-    this.post = (a: A, b?: B) => this.addHandler("POST", a, b);
-    this.put = (a: A, b?: B) => this.addHandler("PUT", a, b);
-    this.delete = (a: A, b?: B) => this.addHandler("DELETE", a, b);
-    this.head = (a: A, b?: B) => this.addHandler("HEAD", a, b);
-    this.trace = (a: A, b?: B) => this.addHandler("TRACE", a, b);
-    this.options = (a: A, b?: B) => this.addHandler("OPTIONS", a, b);
-    this.patch = (a: A, b?: B) => this.addHandler("PATCH", a, b);
-    this.connect = (a: A, b?: B) => this.addHandler("CONNECT", a, b);
-    type A2 = string | B2;
-    type B2 = WSRouteHandler | WSRouteBase;
-    this.ws = (a: A2, b?: B2) => {
-      const pattern = isString(a) ? a : "";
-      const handler = [a, b].find(isWSRouteBaseOrWSRouteHandler);
-      const rb = new WSRouteBase(pattern, handler);
-      const stack = this.wsStack;
-      stack.push(rb);
-      return () => {
-        if (stack.includes(rb)) stack.splice(stack.indexOf(rb), 1);
-      };
-    };
-    if (handler) this.use(handler);
   }
 
   async handle(
@@ -320,6 +323,7 @@ export default class Router extends RouteBase {
     const root = `${_currentPattern}${this.pattern || ""}`;
     if (stack.length === 0) return next();
     for (const handler of stack) {
+      if (handler instanceof WSRouteBase) continue;
       const currPattern = `${root}${handler.pattern || ""}`;
       const { isMatch, params } = matchRoute(
         handler.method,
@@ -358,11 +362,12 @@ export default class Router extends RouteBase {
     _root: string = "",
     _currentPattern: string = ""
   ) {
-    const stack = this.wsStack;
+    const stack = this.stack;
     const { _url } = req;
     const root = `${_currentPattern}${this.pattern || ""}`;
     if (stack.length === 0) return next();
     for (const handler of stack) {
+      if (!(handler instanceof WSRouteBase)) continue;
       const currPattern = `${root}${handler.pattern || ""}`;
       const { isMatch, params } = matchRoute(
         undefined,
@@ -394,19 +399,43 @@ export default class Router extends RouteBase {
     return next();
   }
 
-  private addHandler(
-    arg1?: string | RouteHandler | RouteBase, // expect method
-    arg2?: string | RouteHandler | RouteBase, // expect path pattern
-    arg3?: RouteHandler | RouteBase // expect route handler
+  addHandler(
+    arg1?: WSMethod | WSRouteHandler | WSRouteBase,
+    arg2?: string | WSRouteHandler | WSRouteBase,
+    arg3?: WSRouteHandler | WSRouteBase
+  ): WSRouteBase;
+  addHandler(
+    arg1?: HTTPMethod | RouteHandler | RouteBase,
+    arg2?: string | RouteHandler | RouteBase,
+    arg3?: RouteHandler | RouteBase
+  ): RouteBase;
+  addHandler(
+    arg1?: string | RouteHandler | RouteBase,
+    arg2?: string | RouteHandler | RouteBase,
+    arg3?: RouteHandler | RouteBase
+  ): RouteBase;
+  addHandler(
+    arg1?: string | RouteHandler | RouteBase | WSRouteHandler | WSRouteBase,
+    arg2?: string | RouteHandler | RouteBase | WSRouteHandler | WSRouteBase,
+    arg3?: RouteHandler | RouteBase | WSRouteHandler | WSRouteBase
   ) {
-    const method = isString(arg1) && isString(arg2) ? arg1 : void 0;
+    const method =
+      isString(arg2) && isString(arg1)
+        ? (arg1 as HTTPMethod | WSMethod)
+        : void 0;
+    const isWS = method === "WS";
     const pattern = [arg2, arg1].find(isString) || "";
-    const handler = [arg3, arg2, arg1].find(isRouteBaseOrRouteHandler);
-    const rb = new RouteBase(method, pattern, handler);
-    const stack = this.stack;
-    stack.push(rb);
-    return () => {
-      if (stack.includes(rb)) stack.splice(stack.indexOf(rb), 1);
-    };
+    const rb = isWS
+      ? new WSRouteBase(pattern, [arg3, arg2, arg1].find(isWSRoutable))
+      : new RouteBase(method, pattern, [arg3, arg2, arg1].find(isHttpRoutable));
+    this.stack.push(rb);
+    return rb;
+  }
+
+  removeHandler(routeBase: RouteBase | WSRouteBase) {
+    const index = this.stack.indexOf(routeBase);
+    if (index === -1) return false;
+    this.stack.splice(index, 1);
+    return true;
   }
 }
