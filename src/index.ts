@@ -1,14 +1,15 @@
-import type { JetRequest, JetResponse } from "./http.js";
-import http from "./http.js";
+import type { JetRequest, JetResponse, JetCookieOptions } from "./http.js";
+import http, { cookie } from "./http.js";
 import type { JetSocket } from "./ws.js";
 import { JetWSServer } from "./ws.js";
 import Router from "./route.js";
 import bodyParser from "./body-parser.js";
 
-export type { JetRequest, JetResponse, JetSocket };
-export { Router, bodyParser };
+export type { JetRequest, JetResponse, JetSocket, JetCookieOptions };
+export { Router, bodyParser, cookie };
 
 export default class Jet extends http.Server {
+  static readonly cookie = cookie;
   static readonly bodyParser = bodyParser;
   static readonly Router = Router;
 

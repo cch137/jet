@@ -1,4 +1,5 @@
 import http from "http";
+import cookie, { type CookieSerializeOptions } from "cookie";
 import mime from "mime";
 
 import type { ParamsDictionary } from "./route.js";
@@ -8,6 +9,7 @@ declare module "http" {
     _url: URL;
     readonly ip: string;
     readonly protocol: string;
+    readonly cookies: Partial<{ [key: string]: string }>;
     params: P;
     getHeader(name: string): string | undefined;
     body: any;
@@ -18,6 +20,8 @@ declare module "http" {
     type(type: string): this;
     status(code?: number, message?: string): this;
     redirect(url: string, options?: RedirectOptions): this;
+    setCookie(name: string, value: string, options?: JetCookieOptions): this;
+    removeCookie(name: string, options?: JetCookieOptions): this;
   }
 }
 
@@ -67,6 +71,13 @@ Object.defineProperty(http.IncomingMessage.prototype, "ip", {
   },
 });
 
+Object.defineProperty(http.IncomingMessage.prototype, "cookies", {
+  get: function () {
+    const rawCookie = extractHeader(this.headers["cookie"]);
+    return rawCookie ? cookie.parse(rawCookie) : {};
+  },
+});
+
 http.ServerResponse.prototype.send = function send(data: any) {
   if (data === undefined) return this.end();
   if (
@@ -79,6 +90,24 @@ http.ServerResponse.prototype.send = function send(data: any) {
     return this;
   }
   return this.json(data);
+};
+
+http.ServerResponse.prototype.setCookie = function setCookie(
+  name,
+  value,
+  options
+) {
+  this.appendHeader("set-cookie", cookie.serialize(name, value, options));
+  return this;
+};
+
+http.ServerResponse.prototype.removeCookie = function removeCookie(
+  name,
+  options = {}
+) {
+  delete options.maxAge;
+  delete options.expires;
+  return this.setCookie(name, "", options);
 };
 
 http.ServerResponse.prototype.json = function json(data: any) {
@@ -122,5 +151,9 @@ export type JetRequest<P extends ParamsDictionary = {}> =
 export type JetResponse = http.ServerResponse<http.IncomingMessage> & {
   req: http.IncomingMessage;
 } & NodeJS.WritableStream;
+
+export type JetCookieOptions = CookieSerializeOptions;
+
+export { cookie };
 
 export default http;
