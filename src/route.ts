@@ -32,6 +32,12 @@ export type WSRouteHandler<Params extends ParamsDictionary = {}> = (
   head: Buffer
 ) => void;
 
+export type WSRoutePredicate<Params extends ParamsDictionary = {}> = (
+  soc: Duplex,
+  req: JetRequest<Params>,
+  head: Buffer
+) => boolean;
+
 export type RouteDefiner = {
   <P extends string | undefined>(
     pathPattern: P,
@@ -88,11 +94,16 @@ const HANDLED = Symbol("handled");
 
 const isString = (s: any): s is string => typeof s === "string";
 
+const isFunction = (f: any): f is Function => typeof f === "function";
+
 const isHttpRoutable = (pattern: any): pattern is RouteHandler | RouteBase =>
-  typeof pattern === "function" || pattern instanceof RouteBase;
+  isFunction(pattern) || pattern instanceof RouteBase;
 
 const isWSRoutable = (pattern: any): pattern is WSRouteHandler | WSRouteBase =>
-  typeof pattern === "function" || pattern instanceof WSRouteBase;
+  isFunction(pattern) || pattern instanceof WSRouteBase;
+
+const isWSPreHandler = (pattern: any): pattern is WSRoutePredicate =>
+  isFunction(pattern);
 
 const matchRoute = (
   routeMethod?: string,
@@ -168,10 +179,16 @@ export class RouteBase {
 export class WSRouteBase {
   readonly pattern?: string;
   readonly handler?: WSRouteHandler | WSRouteBase | Router;
+  readonly predicate?: WSRoutePredicate;
 
-  constructor(pattern?: string, handler?: WSRouteHandler | WSRouteBase) {
+  constructor(
+    pattern?: string,
+    handler?: WSRouteHandler | WSRouteBase,
+    predicate?: WSRoutePredicate
+  ) {
     this.pattern = pattern;
     this.handler = handler;
+    this.predicate = predicate;
   }
 
   handleSocket(
@@ -187,6 +204,10 @@ export class WSRouteBase {
     if (!handler) return next();
     if (handler instanceof WSRouteBase || handler instanceof Router) {
       handler.handleSocket(wss, soc, req, head, next, root, currentPattern);
+      return;
+    }
+    if (this.predicate && !this.predicate(soc, req, head)) {
+      soc.destroy();
       return;
     }
     wss.handleUpgrade(req, soc, head, (ws, req) => {
@@ -253,8 +274,9 @@ export class StaticRouter extends RouteBase {
 
 type HTTPRouteArg1 = string | HTTPRouteArg2;
 type HTTPRouteArg2 = RouteHandler | RouteBase;
-type WSRouteArg1 = string | WSRouteArg2;
-type WSRouteArg2 = WSRouteHandler | WSRouteBase;
+type WSRouteArg1 = string | WSRouteHandler | WSRouteBase;
+type WSRouteArg2 = WSRouteHandler | WSRouteBase | WSRoutePredicate;
+type WSRouteArg3 = WSRoutePredicate;
 
 export default class Router extends RouteBase {
   readonly stack: (RouteBase | WSRouteBase)[] = [];
@@ -284,8 +306,8 @@ export default class Router extends RouteBase {
     this.addHandler("PATCH", a, b);
   connect: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler("CONNECT", a, b);
-  ws: WSRouteDefiner = (a: WSRouteArg1, b?: WSRouteArg2) =>
-    this.addHandler("WS", a, b);
+  ws: WSRouteDefiner = (a: WSRouteArg1, b?: WSRouteArg2, c?: WSRouteArg3) =>
+    this.addHandler("WS", a, b, c);
 
   static(root: string, options?: ServeStaticOptions): RouteBase;
   static(
@@ -392,7 +414,8 @@ export default class Router extends RouteBase {
   addHandler(
     arg1?: WSMethod | WSRouteHandler | WSRouteBase,
     arg2?: string | WSRouteHandler | WSRouteBase,
-    arg3?: WSRouteHandler | WSRouteBase
+    arg3?: WSRouteHandler | WSRouteBase | WSRoutePredicate,
+    arg4?: WSRoutePredicate
   ): WSRouteBase;
   addHandler(
     arg1?: HTTPMethod | RouteHandler | RouteBase,
@@ -407,17 +430,36 @@ export default class Router extends RouteBase {
   addHandler(
     arg1?: string | RouteHandler | RouteBase | WSRouteHandler | WSRouteBase,
     arg2?: string | RouteHandler | RouteBase | WSRouteHandler | WSRouteBase,
-    arg3?: RouteHandler | RouteBase | WSRouteHandler | WSRouteBase
+    arg3?:
+      | RouteHandler
+      | RouteBase
+      | WSRouteHandler
+      | WSRouteBase
+      | WSRoutePredicate,
+    arg4?: WSRoutePredicate
   ) {
     const method =
       isString(arg2) && isString(arg1)
         ? (arg1 as HTTPMethod | WSMethod)
         : void 0;
-    const isWS = method === "WS";
-    const pattern = [arg2, arg1].find(isString) || "";
-    const rb = isWS
-      ? new WSRouteBase(pattern, [arg3, arg2, arg1].find(isWSRoutable))
-      : new RouteBase(method, pattern, [arg3, arg2, arg1].find(isHttpRoutable));
+    if (method === "WS") {
+      const pattern = isString(arg2) ? arg2 : "";
+      const handlers1 = [arg2, arg3];
+      const handlers2 = [arg2, arg3, arg4];
+      const handler = handlers1.find(isWSRoutable);
+      const i = handlers1.indexOf(handler);
+      const _predicate = handlers2[i + 1];
+      const predicate =
+        i !== -1 && isWSPreHandler(_predicate) ? _predicate : void 0;
+      const rb = new WSRouteBase(pattern, handler, predicate);
+      this.stack.push(rb);
+      return rb;
+    }
+    const rb = new RouteBase(
+      method,
+      [arg2, arg1].find(isString) || "",
+      [arg3, arg2, arg1].find(isHttpRoutable)
+    );
     this.stack.push(rb);
     return rb;
   }
