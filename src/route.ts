@@ -51,14 +51,16 @@ export type RouteDefiner = {
 export type WSRouteDefiner = {
   <P extends string | undefined>(
     pathPattern: P,
-    handler: WSRouteHandler<RouteParameters<P extends string ? P : "">>
+    handler: WSRouteHandler<RouteParameters<P extends string ? P : "">>,
+    predicate?: WSRoutePredicate<RouteParameters<P extends string ? P : "">>
   ): WSRouteBase;
   <P extends string | undefined>(
     pathPattern: P,
-    handler: WSRouteBase
+    handler: WSRouteBase,
+    predicate?: WSRoutePredicate<RouteParameters<P extends string ? P : "">>
   ): WSRouteBase;
-  (handler: WSRouteHandler): WSRouteBase;
-  (handler: WSRouteBase): WSRouteBase;
+  (handler: WSRouteHandler, predicate?: WSRoutePredicate): WSRouteBase;
+  (handler: WSRouteBase, predicate?: WSRoutePredicate): WSRouteBase;
 };
 
 export type ParamsDictionary = {
