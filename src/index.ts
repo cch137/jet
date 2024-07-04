@@ -4,9 +4,10 @@ import type { JetSocket } from "./ws.js";
 import WebSocket, { JetWSServer, Room, Channel } from "./ws.js";
 import Router from "./route.js";
 import bodyParser from "./body-parser.js";
+import { BiSet } from "./utils.js";
 
 export type { JetRequest, JetResponse, JetCookieOptions, JetSocket };
-export { cookie, bodyParser, http, WebSocket, Router, Room, Channel };
+export { cookie, bodyParser, http, WebSocket, Router, Room, Channel, BiSet };
 
 export default class Jet extends http.Server {
   static readonly cookie = cookie;
@@ -16,6 +17,7 @@ export default class Jet extends http.Server {
   static readonly Router = Router;
   static readonly Room = Room;
   static readonly Channel = Channel;
+  static readonly BiSet = BiSet;
 
   readonly wss = new JetWSServer({ noServer: true });
   readonly route = new Router();
