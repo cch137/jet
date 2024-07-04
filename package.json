@@ -1,6 +1,6 @@
 {
   "name": "@cch137/jet",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "repository": {
     "type": "git",
@@ -25,6 +25,7 @@
     "node": ">=21"
   },
   "dependencies": {
+    "@cch137/emitter": "^0.1.4",
     "@types/cookie": "^0.6.0",
     "@types/ws": "^8.5.10",
     "cookie": "^0.6.0",

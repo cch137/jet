@@ -1,20 +1,24 @@
 import type { JetRequest, JetResponse, JetCookieOptions } from "./http.js";
 import http, { cookie } from "./http.js";
 import type { JetSocket } from "./ws.js";
-import { JetWSServer } from "./ws.js";
+import WebSocket, { JetWSServer, Room, Channel } from "./ws.js";
 import Router from "./route.js";
 import bodyParser from "./body-parser.js";
 
-export type { JetRequest, JetResponse, JetSocket, JetCookieOptions };
-export { Router, bodyParser, cookie };
+export type { JetRequest, JetResponse, JetCookieOptions, JetSocket };
+export { cookie, bodyParser, http, WebSocket, Router, Room, Channel };
 
 export default class Jet extends http.Server {
   static readonly cookie = cookie;
   static readonly bodyParser = bodyParser;
+  static readonly http = http;
+  static readonly WebSocket = WebSocket;
   static readonly Router = Router;
+  static readonly Room = Room;
+  static readonly Channel = Channel;
 
   readonly wss = new JetWSServer({ noServer: true });
-  private readonly route = new Router();
+  readonly route = new Router();
   readonly use = this.route.use;
   readonly get = this.route.get;
   readonly post = this.route.post;

@@ -1,5 +1,6 @@
 import type { Duplex } from "node:stream";
-import { EventEmitter } from "node:events";
+import type Events from "node:events";
+import Emitter from "@cch137/emitter";
 import WebSocket, { WebSocketServer as JetWSServer } from "ws";
 import { BiSet } from "./utils.js";
 
@@ -27,18 +28,18 @@ type BufferLike =
 type ChannelId = string | number | symbol;
 
 export type JetSocket = WebSocket & {
-  readonly rooms: BiSet<JetSocket, "sockets", JetRoom>;
+  readonly rooms: BiSet<JetSocket, "sockets", Room>;
   readonly roles: Readonly<Set<string | number | symbol>>;
-  to: (id: ChannelId) => JetChannel | undefined;
-  subscribe: (id: ChannelId) => JetChannel;
-  unsubscribe: (id: ChannelId) => JetChannel;
-} & EventEmitter<{ join: [JetRoom]; leave: [JetRoom] }>;
+  to: (id: ChannelId) => Channel | undefined;
+  subscribe: (id: ChannelId) => Channel;
+  unsubscribe: (id: ChannelId) => Channel;
+} & Events<{ join: [Room]; leave: [Room] }>;
 
 const _ROLES = Symbol("roles");
 
 Object.defineProperty(WebSocket.prototype, "rooms", {
   get: function () {
-    const value = new BiSet<JetSocket, "sockets", JetRoom>(this, "sockets");
+    const value = new BiSet<JetSocket, "sockets", Room>(this, "sockets");
     Object.defineProperty(this, "rooms", {
       value,
       configurable: false,
@@ -57,7 +58,7 @@ Object.defineProperty(WebSocket.prototype, "roles", {
 
 // @ts-ignore
 WebSocket.prototype.to = function (id: ChannelId) {
-  return new JetChannel(id);
+  return new Channel(id);
 };
 
 // @ts-ignore
@@ -90,7 +91,7 @@ function broadcast(
   );
 }
 
-export class JetRoom extends EventEmitter<{
+export class Room extends Emitter<{
   join: [JetSocket];
   leave: [JetSocket];
 }> {
@@ -99,7 +100,7 @@ export class JetRoom extends EventEmitter<{
     onleave?: (soc: JetSocket) => void
   ) {
     super();
-    this.sockets = new BiSet<JetRoom, "rooms", JetSocket>(
+    this.sockets = new BiSet<Room, "rooms", JetSocket>(
       this,
       "rooms",
       void 0,
@@ -112,7 +113,7 @@ export class JetRoom extends EventEmitter<{
     );
   }
 
-  readonly sockets: BiSet<JetRoom, "rooms", JetSocket>;
+  readonly sockets: BiSet<Room, "rooms", JetSocket>;
 
   join(soc: JetSocket) {
     this.sockets.add(soc);
@@ -127,7 +128,7 @@ export class JetRoom extends EventEmitter<{
   broadcast = broadcast.bind(this);
 }
 
-export class JetChannel {
+export class Channel {
   private static channels = new Map<ChannelId, Set<JetSocket>>();
 
   constructor(id: ChannelId) {
@@ -137,27 +138,27 @@ export class JetChannel {
   readonly id: ChannelId;
 
   get sockets() {
-    return Object.freeze(Array.from(JetChannel.channels.get(this.id) || []));
+    return Object.freeze(Array.from(Channel.channels.get(this.id) || []));
   }
 
   add(soc: JetSocket) {
-    const channel = JetChannel.channels.get(this.id);
+    const channel = Channel.channels.get(this.id);
     if (channel) channel.add(soc);
-    else JetChannel.channels.set(this.id, new Set([soc]));
+    else Channel.channels.set(this.id, new Set([soc]));
     return this;
   }
 
   remove(soc: JetSocket) {
-    const channel = JetChannel.channels.get(this.id);
+    const channel = Channel.channels.get(this.id);
     if (channel) {
       channel.delete(soc);
-      if (channel.size === 0) JetChannel.channels.delete(this.id);
+      if (channel.size === 0) Channel.channels.delete(this.id);
     }
     return this;
   }
 
   has(soc: JetSocket) {
-    return JetChannel.channels.get(this.id)?.has(soc) || false;
+    return Channel.channels.get(this.id)?.has(soc) || false;
   }
 
   broadcast = broadcast.bind(this);
