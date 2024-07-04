@@ -24,19 +24,19 @@ export type RouteHandler<Params extends ParamsDictionary = {}> = (
   req: JetRequest<Params>,
   res: JetResponse,
   next: RouteNextHandler
-) => void;
+) => void | Promise<void>;
 
 export type WSRouteHandler<Params extends ParamsDictionary = {}> = (
   soc: JetSocket,
   req: JetRequest<Params>,
   head: Buffer
-) => void;
+) => void | Promise<void>;
 
 export type WSRoutePredicate<Params extends ParamsDictionary = {}> = (
   soc: Duplex,
   req: JetRequest<Params>,
   head: Buffer
-) => boolean;
+) => boolean | Promise<boolean>;
 
 export type RouteDefiner = {
   <P extends string | undefined>(
@@ -193,7 +193,7 @@ export class WSRouteBase {
     this.predicate = predicate;
   }
 
-  handleSocket(
+  async handleSocket(
     wss: JetWSServer,
     soc: Duplex,
     req: JetRequest,
@@ -201,14 +201,14 @@ export class WSRouteBase {
     next: RouteNextHandler,
     root?: string,
     currentPattern?: string
-  ): void {
+  ) {
     const handler = this.handler;
     if (!handler) return next();
     if (handler instanceof WSRouteBase || handler instanceof Router) {
       handler.handleSocket(wss, soc, req, head, next, root, currentPattern);
       return;
     }
-    if (this.predicate && !this.predicate(soc, req, head)) {
+    if (this.predicate && !(await this.predicate(soc, req, head))) {
       soc.destroy();
       return;
     }
