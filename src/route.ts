@@ -18,19 +18,19 @@ export type HTTPMethod =
 
 export type WSMethod = "WS";
 
-export type RouteNextHandler = () => void;
+export type RouteNextHandler = () => void | Promise<void>;
 
 export type RouteHandler<Params extends ParamsDictionary = {}> = (
   req: JetRequest<Params>,
   res: JetResponse,
   next: RouteNextHandler
-) => void | Promise<void>;
+) => any | Promise<any>;
 
 export type WSRouteHandler<Params extends ParamsDictionary = {}> = (
   soc: JetSocket,
   req: JetRequest<Params>,
   head: Buffer
-) => void | Promise<void>;
+) => any | Promise<any>;
 
 export type WSRoutePredicate<Params extends ParamsDictionary = {}> = (
   soc: Duplex,
@@ -171,8 +171,8 @@ export class RouteBase {
     currentPattern?: string
   ): void {
     const handler = this.handler;
-    if (!handler) return next();
-    if (handler instanceof RouteBase)
+    if (!handler) next();
+    else if (handler instanceof RouteBase)
       handler.handle(req, res, next, root, currentPattern);
     else handler(req, res, next);
   }
@@ -358,7 +358,9 @@ export default class Router extends RouteBase {
             handler.handle(
               req,
               res,
-              () => (resolve(), res.off("close", reject)),
+              () => {
+                resolve(), res.off("close", reject);
+              },
               root,
               currPattern
             );
