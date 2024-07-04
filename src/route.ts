@@ -167,7 +167,7 @@ export class RouteBase {
 
 export class WSRouteBase {
   readonly pattern?: string;
-  readonly handler?: WSRouteHandler | WSRouteBase;
+  readonly handler?: WSRouteHandler | WSRouteBase | Router;
 
   constructor(pattern?: string, handler?: WSRouteHandler | WSRouteBase) {
     this.pattern = pattern;
@@ -185,16 +185,10 @@ export class WSRouteBase {
   ): void {
     const handler = this.handler;
     if (!handler) return next();
-    if (handler instanceof WSRouteBase)
-      return handler.handleSocket(
-        wss,
-        soc,
-        req,
-        head,
-        next,
-        root,
-        currentPattern
-      );
+    if (handler instanceof WSRouteBase || handler instanceof Router) {
+      handler.handleSocket(wss, soc, req, head, next, root, currentPattern);
+      return;
+    }
     wss.handleUpgrade(req, soc, head, (ws, req) => {
       ws.on("close", () => (ws as JetSocket).rooms.clear());
       wss.emit("connection", ws, req, head);
@@ -320,7 +314,7 @@ export default class Router extends RouteBase {
   ) {
     const stack = this.stack;
     const { method, _url } = req;
-    const root = `${_currentPattern}${this.pattern || ""}`;
+    const root = `${_currentPattern}${this.pattern || ""}` || "/";
     if (stack.length === 0) return next();
     for (const handler of stack) {
       if (handler instanceof WSRouteBase) continue;
@@ -364,17 +358,23 @@ export default class Router extends RouteBase {
   ) {
     const stack = this.stack;
     const { _url } = req;
-    const root = `${_currentPattern}${this.pattern || ""}`;
+    const root = `${_currentPattern}${this.pattern || ""}` || "/";
     if (stack.length === 0) return next();
-    for (const handler of stack) {
-      if (!(handler instanceof WSRouteBase)) continue;
+    for (const _handler of stack) {
+      const handler =
+        _handler instanceof WSRouteBase
+          ? _handler
+          : _handler.handler instanceof Router
+          ? _handler.handler
+          : null;
+      if (!handler) continue;
       const currPattern = `${root}${handler.pattern || ""}`;
       const { isMatch, params } = matchRoute(
         undefined,
         currPattern,
         undefined,
         decodeURIComponent(_url.pathname),
-        handler.handler instanceof WSRouteBase || !handler.pattern
+        handler instanceof Router || !handler.pattern
       );
       if (isMatch) {
         try {
