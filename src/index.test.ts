@@ -30,12 +30,12 @@ wsRouter.ws("/ws-test", (soc) => {
   });
 });
 
-jet.use(wsRouter);
+jet.use("/ws-1", wsRouter);
 
 jet.listen(3000, () => {
   console.log("listening on http://localhost:3000");
   const createSoc = (id: number) => {
-    const soc = new ws("ws://localhost:3000/ws-test");
+    const soc = new ws("ws://localhost:3000/ws-1/ws-test");
     soc.on("pong", () => {
       console.log(`client-${id} pong`);
     });
@@ -54,7 +54,7 @@ jet.listen(3000, () => {
   } catch {
     console.log("ws failed");
   }
-  fetch("http://localhost:3000/");
+  // fetch("http://localhost:3000/");
 });
 
 process.on("uncaughtException", (e) => console.log(e.message));

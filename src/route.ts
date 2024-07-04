@@ -138,7 +138,7 @@ const matchRoute = (
 export class RouteBase {
   readonly method?: HTTPMethod;
   readonly pattern?: string;
-  readonly handler?: RouteHandler | RouteBase;
+  readonly handler?: RouteHandler | RouteBase | Router;
 
   constructor(
     method?: HTTPMethod,
@@ -160,8 +160,8 @@ export class RouteBase {
     const handler = this.handler;
     if (!handler) return next();
     if (handler instanceof RouteBase)
-      return handler.handle(req, res, next, root, currentPattern);
-    return handler(req, res, next);
+      handler.handle(req, res, next, root, currentPattern);
+    else handler(req, res, next);
   }
 }
 
@@ -360,36 +360,26 @@ export default class Router extends RouteBase {
     const { _url } = req;
     const root = `${_currentPattern}${this.pattern || ""}` || "/";
     if (stack.length === 0) return next();
-    for (const _handler of stack) {
-      const handler =
-        _handler instanceof WSRouteBase
-          ? _handler
-          : _handler.handler instanceof Router
-          ? _handler.handler
-          : null;
-      if (!handler) continue;
+    for (const handler of stack) {
+      const isRouter = handler.handler instanceof Router;
+      if (handler instanceof RouteBase && !isRouter) continue;
       const currPattern = `${root}${handler.pattern || ""}`;
       const { isMatch, params } = matchRoute(
         undefined,
         currPattern,
         undefined,
         decodeURIComponent(_url.pathname),
-        handler instanceof Router || !handler.pattern
+        isRouter || !handler.pattern
       );
       if (isMatch) {
         try {
           await new Promise<void>((resolve, reject) => {
             req.params = params || {};
             soc.once(HANDLED, reject);
-            handler.handleSocket(
-              wss,
-              soc,
-              req,
-              head,
-              resolve,
-              root,
-              currPattern
-            );
+            (isRouter
+              ? handler.handler
+              : (handler as WSRouteBase)
+            ).handleSocket(wss, soc, req, head, resolve, root, currPattern);
           });
         } catch {
           return;
