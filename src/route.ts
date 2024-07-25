@@ -114,7 +114,7 @@ const matchRoute = (
   url?: string,
   matchStart = false
 ): { isMatch: boolean; params?: ParamsDictionary } => {
-  routePattern = routePattern.replace(/(\/|\\)+/, "/");
+  routePattern = routePattern.replace(/(\/|\\)+/g, "/");
   if (!(!routeMethod || routeMethod === method)) return { isMatch: false };
   if (!routePattern) return { isMatch: true };
   if (!routePattern.includes(":"))

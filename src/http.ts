@@ -111,6 +111,7 @@ http.ServerResponse.prototype.removeCookie = function removeCookie(
 };
 
 http.ServerResponse.prototype.json = function json(data: any) {
+  this.type("json");
   this.write(JSON.stringify(data));
   this.end();
   return this;
