@@ -141,7 +141,7 @@ http.ServerResponse.prototype.redirect = function redirect(
   { code = 302, message, content }: RedirectOptions = {}
 ) {
   this.status(code, message);
-  this.setHeader("Location", url);
+  this.setHeader("Location", encodeURI(url));
   this.send(content);
   return this;
 };
