@@ -248,7 +248,7 @@ export class StaticRouter extends RouteBase {
     currentPattern: string = ""
   ) {
     try {
-      const pathaname = req._url.pathname;
+      const pathaname = req.jetURL.pathname;
       const filepath = relative(currentPattern, pathaname);
       const absFilepath = join(this.root, filepath);
       if (existsSync(absFilepath)) {
@@ -337,7 +337,7 @@ export default class Router extends RouteBase {
     _currentPattern: string = ""
   ) {
     const stack = this.stack;
-    const { method, _url } = req;
+    const { method, jetURL } = req;
     const root = `${_currentPattern}${this.pattern || ""}` || "/";
     if (stack.length === 0) return next();
     for (const handler of stack) {
@@ -347,7 +347,7 @@ export default class Router extends RouteBase {
         handler.method,
         currPattern,
         method,
-        decodeURIComponent(_url.pathname),
+        decodeURIComponent(jetURL.pathname),
         handler.handler instanceof RouteBase || !handler.pattern
       );
       if (isMatch) {
@@ -383,7 +383,7 @@ export default class Router extends RouteBase {
     _currentPattern: string = ""
   ) {
     const stack = this.stack;
-    const { _url } = req;
+    const url = req.jetURL;
     const root = `${_currentPattern}${this.pattern || ""}` || "/";
     if (stack.length === 0) return next();
     for (const handler of stack) {
@@ -394,7 +394,7 @@ export default class Router extends RouteBase {
         undefined,
         currPattern,
         undefined,
-        decodeURIComponent(_url.pathname),
+        decodeURIComponent(url.pathname),
         isRouter || !handler.pattern
       );
       if (isMatch) {

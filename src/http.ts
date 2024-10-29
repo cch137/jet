@@ -6,7 +6,7 @@ import type { ParamsDictionary } from "./route.js";
 
 declare module "http" {
   interface IncomingMessage<P extends ParamsDictionary = {}> {
-    _url: URL;
+    jetURL: URL;
     readonly ip: string;
     readonly protocol: string;
     readonly cookies: Partial<{ [key: string]: string }>;
@@ -36,7 +36,7 @@ http.IncomingMessage.prototype.getHeader = function getHeader(name: string) {
   return extractHeader(this.headers[name]);
 };
 
-Object.defineProperty(http.IncomingMessage.prototype, "_url", {
+Object.defineProperty(http.IncomingMessage.prototype, "jetURL", {
   get: function () {
     return new URL(
       this.url || "",
