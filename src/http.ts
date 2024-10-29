@@ -38,43 +38,44 @@ http.IncomingMessage.prototype.getHeader = function getHeader(name: string) {
 
 Object.defineProperty(http.IncomingMessage.prototype, "jetURL", {
   get: function () {
-    return new URL(
+    return (this.__Jet_jetURL ||= new URL(
       this.url || "",
       `${this.protocol}://${this.getHeader("host")}`
-    );
+    ));
   },
 });
 
 Object.defineProperty(http.IncomingMessage.prototype, "protocol", {
   get: function () {
+    if (this.__Jet_protocol) return this.__Jet_protocol;
     const cfVisitorMatched = (this.getHeader("cf-visitor") || "").match(
       /"scheme":"(.*)"/
     );
-    return (
+    return (this.__Jet_protocol =
       (cfVisitorMatched
         ? cfVisitorMatched[1]
-        : this.getHeader("x-forwarded-proto")) || "http"
-    );
+        : this.getHeader("x-forwarded-proto")) || "http");
   },
 });
 
 Object.defineProperty(http.IncomingMessage.prototype, "ip", {
   get: function () {
-    const headers = this.headers;
-    return (
-      extractHeader(headers["cf-connecting-ip"]) ||
-      (extractHeader(headers["x-forwarded-for"]) || "").split(",")[0].trim() ||
-      extractHeader(headers["true-client-ip"]) ||
+    return (this.__Jet_ip ||=
+      extractHeader(this.headers["cf-connecting-ip"]) ||
+      (extractHeader(this.headers["x-forwarded-for"]) || "")
+        .split(",")[0]
+        .trim() ||
+      extractHeader(this.headers["true-client-ip"]) ||
       this.socket.remoteAddress ||
-      ""
-    );
+      "");
   },
 });
 
 Object.defineProperty(http.IncomingMessage.prototype, "cookies", {
   get: function () {
+    if (this.__Jet_cookies) return this.__Jet_cookies;
     const rawCookie = extractHeader(this.headers["cookie"]);
-    return rawCookie ? cookie.parse(rawCookie) : {};
+    return (this.__Jet_cookies = rawCookie ? cookie.parse(rawCookie) : {});
   },
 });
 

@@ -54,7 +54,9 @@ jet.listen(3000, () => {
   } catch {
     console.log("ws failed");
   }
-  // fetch("http://localhost:3000/");
+  fetch("http://localhost:3000/")
+    .then(async (res) => console.log(res.status, await res.text()))
+    .catch((e) => console.log(e.message));
 });
 
 process.on("uncaughtException", (e) => console.log(e.message));
