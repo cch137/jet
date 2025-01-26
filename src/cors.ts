@@ -1,23 +1,29 @@
 import type { JetRequest, JetResponse } from "./http.js";
 
 type CORSOptions = {
-  credentials?: string;
+  credentials?: true;
   origin?: string;
-  methods?: string;
-  headers?: string;
+  methods?: string[];
+  headers?: string[];
 };
 
 export default function cors({
-  credentials = "true",
+  credentials = true,
   origin = "*",
-  methods = "*",
-  headers = "*",
+  methods,
+  headers,
 }: CORSOptions = {}) {
   return (req: JetRequest, res: JetResponse, next: () => void) => {
-    res.setHeader("Access-Control-Allow-Credentials", credentials);
+    if (credentials) res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Methods", methods);
-    res.setHeader("Access-Control-Allow-Headers", headers);
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      methods ? methods.join(", ") : "*"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      headers ? headers.join(", ") : "*"
+    );
     if (req.method === "OPTIONS") {
       res.setHeader("Content-Length", "0");
       res.status(204).end();
