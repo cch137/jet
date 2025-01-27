@@ -1,9 +1,11 @@
-import Jet from "./index.js";
+import Jet, { cors } from "./index.js";
 import ws from "ws";
 
 const jet = new Jet();
 
 const router = new Jet.Router();
+
+router.use(cors());
 
 router.get("/", (req, res) => {
   console.log("root OK");
@@ -31,11 +33,11 @@ wsRouter.ws("/ws-test", (soc) => {
 });
 
 jet.use("/ws-1", wsRouter);
-
-jet.listen(3000, () => {
-  console.log("listening on http://localhost:3000");
+const PORT = 4000;
+jet.listen(PORT, () => {
+  console.log(`listening on http://localhost:${PORT}`);
   const createSoc = (id: number) => {
-    const soc = new ws("ws://localhost:3000/ws-1/ws-test");
+    const soc = new ws(`ws://localhost:${PORT}/ws-1/ws-test`);
     soc.on("pong", () => {
       console.log(`client-${id} pong`);
     });
@@ -54,7 +56,7 @@ jet.listen(3000, () => {
   } catch {
     console.log("ws failed");
   }
-  fetch("http://localhost:3000/")
+  fetch(`http://localhost:${PORT}/`)
     .then(async (res) => console.log(res.status, await res.text()))
     .catch((e) => console.log(e.message));
 });
