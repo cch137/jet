@@ -7,6 +7,11 @@ type CORSOptions = {
   headers?: string[];
 };
 
+const trimOrigin = (s: string) => {
+  const u = new URL(s);
+  return u.origin;
+};
+
 export default function cors({
   credentials = true,
   origin = "*",
@@ -17,8 +22,9 @@ export default function cors({
     if (credentials) res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader(
       "Access-Control-Allow-Origin",
-      (origin === "*" ? req.headers.referer ?? req.jetURL.origin : origin) ??
-        "*"
+      (origin === "*"
+        ? trimOrigin(req.headers.referer ?? req.jetURL.origin)
+        : origin) ?? "*"
     );
     res.setHeader(
       "Access-Control-Allow-Methods",
