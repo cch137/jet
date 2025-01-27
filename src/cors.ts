@@ -17,7 +17,9 @@ export default function cors({
     if (credentials) res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader(
       "Access-Control-Allow-Origin",
-      (origin === "*" ? req.jetURL.origin : origin) ?? "*"
+      (origin === "*"
+        ? req.getHeader("referrer") ?? req.jetURL.origin
+        : origin) ?? "*"
     );
     res.setHeader(
       "Access-Control-Allow-Methods",
