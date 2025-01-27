@@ -15,7 +15,10 @@ export default function cors({
 }: CORSOptions = {}) {
   return (req: JetRequest, res: JetResponse, next: () => void) => {
     if (credentials) res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader(
+      "Access-Control-Allow-Origin",
+      (origin === "*" ? req.jetURL.origin : origin) ?? "*"
+    );
     res.setHeader(
       "Access-Control-Allow-Methods",
       methods ? methods.join(", ") : "*"

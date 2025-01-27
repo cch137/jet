@@ -1,6 +1,6 @@
 {
   "name": "@cch137/jet",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
