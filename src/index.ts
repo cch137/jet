@@ -8,6 +8,8 @@ import bodyParser from "./body-parser.js";
 import getParams from "./get-params.js";
 import { BiSet } from "./utils.js";
 
+export { cookie };
+
 export type { JetRequest, JetResponse, JetCookieOptions, JetSocket };
 
 export default class Jet extends http.Server {
