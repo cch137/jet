@@ -62,7 +62,7 @@ export async function readBody(req: JetRequest) {
 
 export default async function bodyParser(
   req: JetRequest,
-  res: JetResponse,
+  _res: JetResponse,
   next: () => void
 ) {
   try {

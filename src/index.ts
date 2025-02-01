@@ -5,6 +5,7 @@ import WebSocket, { JetWSServer, Room, Channel } from "./ws.js";
 import Router from "./route.js";
 import cors from "./cors.js";
 import bodyParser from "./body-parser.js";
+import getParams from "./get-params.js";
 import { BiSet } from "./utils.js";
 
 export type { JetRequest, JetResponse, JetCookieOptions, JetSocket };
@@ -12,6 +13,7 @@ export {
   cors,
   cookie,
   bodyParser,
+  getParams,
   http,
   WebSocket,
   Router,
@@ -23,6 +25,7 @@ export {
 export default class Jet extends http.Server {
   static readonly cookie = cookie;
   static readonly bodyParser = bodyParser;
+  static readonly getParams = getParams;
   static readonly http = http;
   static readonly WebSocket = WebSocket;
   static readonly Router = Router;
