@@ -9,21 +9,10 @@ import getParams from "./get-params.js";
 import { BiSet } from "./utils.js";
 
 export type { JetRequest, JetResponse, JetCookieOptions, JetSocket };
-export {
-  cors,
-  cookie,
-  bodyParser,
-  getParams,
-  http,
-  WebSocket,
-  Router,
-  Room,
-  Channel,
-  BiSet,
-};
 
 export default class Jet extends http.Server {
   static readonly cookie = cookie;
+  static readonly cors = cors;
   static readonly bodyParser = bodyParser;
   static readonly getParams = getParams;
   static readonly http = http;

@@ -1,11 +1,11 @@
-import Jet, { cors } from "./index.js";
+import Jet from "./index.js";
 import ws from "ws";
 
 const jet = new Jet();
 
 const router = new Jet.Router();
 
-router.use(cors());
+router.use(Jet.cors());
 
 router.get("/", (req, res) => {
   console.log("root OK");
