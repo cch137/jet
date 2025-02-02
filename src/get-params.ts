@@ -1,7 +1,7 @@
 import type { JetRequest } from "./http.js";
 import type { ParsedQs } from "qs";
 
-type ParsedQsValue = string | ParsedQs | string[] | ParsedQs[] | undefined;
+type ParsedQsValue = string | ParsedQs | (string | ParsedQs)[] | undefined;
 
 const tryParseQsToJSON = (q: ParsedQsValue): any => {
   if (!q) return q;

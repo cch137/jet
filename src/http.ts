@@ -1,5 +1,5 @@
 import http from "http";
-import cookie, { type CookieSerializeOptions } from "cookie";
+import cookie, { type SerializeOptions } from "cookie";
 import mime from "mime";
 
 import type { ParamsDictionary } from "./route.js";
@@ -154,7 +154,7 @@ export type JetResponse = http.ServerResponse<http.IncomingMessage> & {
   req: http.IncomingMessage;
 } & NodeJS.WritableStream;
 
-export type JetCookieOptions = CookieSerializeOptions;
+export type JetCookieOptions = SerializeOptions;
 
 export { cookie };
 
