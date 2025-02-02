@@ -1,6 +1,6 @@
 {
   "name": "@cch137/jet",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
@@ -27,13 +27,13 @@
     "node": ">=21"
   },
   "dependencies": {
-    "@cch137/emitter": "^0.1.6",
+    "@cch137/emitter": "^0.1.7",
     "@types/cookie": "^0.6.0",
     "@types/ws": "^8.5.10",
-    "cookie": "^0.6.0",
+    "cookie": "^1.0.2",
     "mime": "^4.0.3",
     "qs": "^6.12.2",
-    "send": "^0.18.0",
+    "send": "^1.1.0",
     "ws": "^8.18.0"
   }
 }
