@@ -1,9 +1,11 @@
-import Jet from "./index.js";
+import Jet, { type JetRouter } from "./index.js";
 import ws from "ws";
 
 const jet = new Jet();
 
 const router = new Jet.Router();
+
+type JR = JetRouter;
 
 router.use(Jet.cors());
 
