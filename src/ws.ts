@@ -3,7 +3,6 @@ import type Events from "node:events";
 import Emitter from "@cch137/emitter";
 import WS, { WebSocketServer } from "ws";
 
-import type { JetSocket } from "./types.js";
 import { BiSet } from "./utils.js";
 
 export { Duplex, WebSocketServer };
@@ -28,7 +27,7 @@ type BufferLike =
 
 type ChannelId = string | number | symbol;
 
-export type WebSocket = WS & {
+export type JetSocket = WS & {
   readonly rooms: BiSet<JetSocket, "sockets", WSRoom>;
   readonly roles: Readonly<Set<string | number | symbol>>;
   to: (id: ChannelId) => WSChannel | undefined;
