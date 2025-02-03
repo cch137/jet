@@ -1,7 +1,7 @@
 import { Duplex } from "node:stream";
 import type Events from "node:events";
 import Emitter from "@cch137/emitter";
-import WS, { WebSocketServer } from "ws";
+import WS, { WebSocket, WebSocketServer } from "ws";
 
 import { BiSet } from "./utils.js";
 
@@ -27,7 +27,7 @@ type BufferLike =
 
 type ChannelId = string | number | symbol;
 
-export type JetSocket = WS & {
+export type JetSocket = WebSocket & {
   readonly rooms: BiSet<JetSocket, "sockets", JetWSRoom>;
   readonly roles: Readonly<Set<string | number | symbol>>;
   to: (id: ChannelId) => JetWSChannel | undefined;
@@ -37,7 +37,7 @@ export type JetSocket = WS & {
 
 const _ROLES = Symbol("roles");
 
-Object.defineProperty(WS.prototype, "rooms", {
+Object.defineProperty(WebSocket.prototype, "rooms", {
   get: function () {
     const value = new BiSet<JetSocket, "sockets", JetWSRoom>(this, "sockets");
     Object.defineProperty(this, "rooms", {
@@ -50,22 +50,22 @@ Object.defineProperty(WS.prototype, "rooms", {
   configurable: true,
 });
 
-Object.defineProperty(WS.prototype, "roles", {
+Object.defineProperty(WebSocket.prototype, "roles", {
   get: function () {
     return this[_ROLES] || (this[_ROLES] = new Set());
   },
 });
 
 // @ts-ignore
-WS.prototype.to = function (id: ChannelId) {
+WebSocket.prototype.to = function (id: ChannelId) {
   return new JetWSChannel(id);
 };
 
 // @ts-ignore
-WS.prototype.subscribe = function (id: ChannelId) {};
+WebSocket.prototype.subscribe = function (id: ChannelId) {};
 
 // @ts-ignore
-WS.prototype.unsubscribe = function (id: ChannelId) {};
+WebSocket.prototype.unsubscribe = function (id: ChannelId) {};
 
 function broadcast(data: BufferLike, cb?: (err?: Error) => void): void;
 function broadcast(
