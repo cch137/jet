@@ -3,6 +3,10 @@ import http, { cookie } from "./http.js";
 import type { JetSocket } from "./ws.js";
 import WebSocket, { JetWSServer, Room, Channel } from "./ws.js";
 import JetRouter from "./route.js";
+import type {
+  RouteHandler as JetRouteHandler,
+  WSRouteHandler as JetWSRouteHandler,
+} from "./route.js";
 import cors from "./cors.js";
 import bodyParser from "./body-parser.js";
 import getParams from "./get-params.js";
@@ -10,7 +14,15 @@ import { BiSet } from "./utils.js";
 
 export { cookie, WebSocket };
 
-export type { JetRouter, JetRequest, JetResponse, JetCookieOptions, JetSocket };
+export type {
+  JetRouter,
+  JetRouteHandler,
+  JetWSRouteHandler,
+  JetRequest,
+  JetResponse,
+  JetCookieOptions,
+  JetSocket,
+};
 
 export default class Jet extends http.Server {
   static readonly cookie = cookie;
