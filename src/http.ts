@@ -2,7 +2,7 @@ import http from "http";
 import cookie, { type SerializeOptions } from "cookie";
 import mime from "mime";
 
-import type { ParamsDictionary } from "./types.js";
+import type { ParamsDictionary } from "./route.js";
 
 declare module "http" {
   interface IncomingMessage<P extends ParamsDictionary = {}> {
@@ -147,10 +147,10 @@ http.ServerResponse.prototype.redirect = function redirect(
   return this;
 };
 
-export type HTTPRequest<P extends ParamsDictionary = {}> =
+export type JetRequest<P extends ParamsDictionary = {}> =
   http.IncomingMessage<P> & NodeJS.ReadableStream;
 
-export type HTTPResponse = http.ServerResponse<http.IncomingMessage> & {
+export type JetResponse = http.ServerResponse<http.IncomingMessage> & {
   req: http.IncomingMessage;
 } & NodeJS.WritableStream;
 

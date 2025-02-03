@@ -1,9 +1,12 @@
-import type {
-  JetCORSOptions,
-  JetRequest,
-  JetResponse,
-  JetRouteHandler,
-} from "./types.js";
+import type { JetRequest, JetResponse } from "./http.js";
+import type { JetRouteHandler } from "./route.js";
+
+export type JetCORSOptions = {
+  credentials?: true;
+  origin?: string;
+  methods?: string[];
+  headers?: string[];
+};
 
 const trimOrigin = (s: string) => {
   const u = new URL(s);

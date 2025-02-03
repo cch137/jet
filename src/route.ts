@@ -2,19 +2,40 @@ import { statSync, existsSync } from "fs";
 import { resolve, relative, join } from "path";
 import send from "send";
 
-import type { Duplex } from "./ws.js";
-import type {
-  JetRequest,
-  JetResponse,
-  JetRouteNextHandler,
-  JetRouteHandler,
-  JetWSRouteHandler,
-  JetSocket,
-  ParamsDictionary,
-  HTTPMethod,
-  WSMethod,
-} from "./types.js";
-import { JetWebSocketServer } from "./types.js";
+import type { JetRequest, JetResponse } from "./http.js";
+import type { JetSocket } from "./ws.js";
+import { Duplex, JetWebSocketServer } from "./ws.js";
+
+export type HTTPMethod =
+  | "GET"
+  | "HEAD"
+  | "OPTIONS"
+  | "POST"
+  | "PUT"
+  | "PATCH"
+  | "DELETE"
+  | "TRACE"
+  | "CONNECT";
+
+export type WSMethod = "WS";
+
+export type ParamsDictionary = {
+  [key: string]: string;
+};
+
+export type JetRouteNextHandler = () => void | Promise<void>;
+
+export type JetRouteHandler<Params extends ParamsDictionary = {}> = (
+  req: JetRequest<Params>,
+  res: JetResponse,
+  next: JetRouteNextHandler
+) => any | Promise<any>;
+
+export type JetWSRouteHandler<Params extends ParamsDictionary = {}> = (
+  soc: JetSocket,
+  req: JetRequest<Params>,
+  head: Buffer
+) => any | Promise<any>;
 
 export type JetWSRoutePredicate<Params extends ParamsDictionary = {}> = (
   soc: Duplex,
@@ -267,7 +288,7 @@ type WSRouteArg1 = string | JetWSRouteHandler | JetWSRouteBase;
 type WSRouteArg2 = JetWSRouteHandler | JetWSRouteBase | JetWSRoutePredicate;
 type WSRouteArg3 = JetWSRoutePredicate;
 
-export default class JetRouter extends JetRouteBase {
+export class JetRouter extends JetRouteBase {
   readonly stack: (JetRouteBase | JetWSRouteBase)[] = [];
 
   constructor(handler?: JetRouteHandler) {

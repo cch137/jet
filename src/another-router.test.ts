@@ -2,12 +2,8 @@ import { statSync, existsSync } from "fs";
 import { resolve, relative, join } from "path";
 import send from "send";
 
-import type {
-  JetRequest,
-  JetResponse,
-  JetWebSocketServer,
-  JetSocket,
-} from "./types.js";
+import type { JetRequest, JetResponse } from "./http.js";
+import type { JetWebSocketServer, JetSocket } from "./ws.js";
 import { Duplex } from "./ws.js";
 
 export type HTTPMethod =

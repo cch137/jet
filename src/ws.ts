@@ -5,7 +5,7 @@ import WS, { WebSocketServer } from "ws";
 
 import { BiSet } from "./utils.js";
 
-export { Duplex, WebSocketServer };
+export { Duplex, WebSocketServer as JetWebSocketServer };
 
 type BufferLike =
   | string

@@ -1,5 +1,5 @@
-import type { JetRequest } from "./types.js";
 import type { ParsedQs } from "qs";
+import type { JetRequest } from "./http.js";
 
 type ParsedQsValue = string | ParsedQs | (string | ParsedQs)[] | undefined;
 
@@ -17,7 +17,9 @@ const tryParseQsToJSON = (q: ParsedQsValue): any => {
   return q;
 };
 
-const getParams = <T extends { [key: string]: any }>(req: JetRequest) => {
+export const getParams = <T extends { [key: string]: any }>(
+  req: JetRequest
+) => {
   const { body: _body } = req;
   const searchParams = req.jetURL.searchParams;
   const query: { [key: string]: any } = {};
@@ -29,5 +31,3 @@ const getParams = <T extends { [key: string]: any }>(req: JetRequest) => {
   }
   return body;
 };
-
-export default getParams;

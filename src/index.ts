@@ -1,27 +1,19 @@
 import http, { cookie } from "./http.js";
-import WS from "./ws.js";
+import WebSocket from "./ws.js";
 
-import type {
-  JetRequest,
-  JetResponse,
-  JetSocket,
-  JetRouteHandler,
-  JetWSRouteHandler,
-  JetCORSOptions,
-} from "./types.js";
-import {
-  JetWebSocketServer,
-  JetRouter,
-  JetWSRoom,
-  JetWSChannel,
-} from "./types.js";
+import type { JetRequest, JetResponse } from "./http.js";
+import type { JetSocket } from "./ws.js";
+import type { JetRouteHandler, JetWSRouteHandler } from "./route.js";
+import type { JetCORSOptions } from "./cors.js";
+
+import { JetWebSocketServer, JetWSRoom, JetWSChannel } from "./ws.js";
+import { JetRouter } from "./route.js";
 import { BiSet } from "./utils.js";
-
 import { cors } from "./cors.js";
 import { bodyParser } from "./body-parser.js";
-import getParams from "./get-params.js";
+import { getParams } from "./get-params.js";
 
-export { cookie, WS as WebSocket };
+export { http, cookie, WebSocket };
 
 export type {
   JetRequest,
@@ -37,9 +29,9 @@ export type {
 };
 
 export default class Jet extends http.Server {
-  static readonly cookie = cookie;
   static readonly http = http;
-  static readonly WebSocket = WS;
+  static readonly cookie = cookie;
+  static readonly WebSocket = WebSocket;
 
   static readonly Router = JetRouter;
   static readonly WSRoom = JetWSRoom;
