@@ -1,4 +1,4 @@
-import type { JetRequest } from "./http.js";
+import type { JetRequest } from "./types.js";
 import type { ParsedQs } from "qs";
 
 type ParsedQsValue = string | ParsedQs | (string | ParsedQs)[] | undefined;

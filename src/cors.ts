@@ -1,23 +1,21 @@
-import type { JetRequest, JetResponse } from "./http.js";
-
-type CORSOptions = {
-  credentials?: true;
-  origin?: string;
-  methods?: string[];
-  headers?: string[];
-};
+import type {
+  JetCORSOptions,
+  JetRequest,
+  JetResponse,
+  JetRouteHandler,
+} from "./types.js";
 
 const trimOrigin = (s: string) => {
   const u = new URL(s);
   return u.origin;
 };
 
-export default function cors({
+export const cors = ({
   credentials = true,
   origin = "*",
   methods,
   headers,
-}: CORSOptions = {}) {
+}: JetCORSOptions = {}): JetRouteHandler => {
   return (req: JetRequest, res: JetResponse, next: () => void) => {
     if (credentials) res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader(
@@ -41,4 +39,4 @@ export default function cors({
       next();
     }
   };
-}
+};

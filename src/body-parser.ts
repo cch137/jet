@@ -1,5 +1,6 @@
 import qs from "qs";
-import type { JetRequest, JetResponse } from "./http.js";
+
+import type { JetRequest, JetResponse, JetRouteHandler } from "./types.js";
 
 const formType = /application\/x-www-form-urlencoded/;
 const jsonType = /application\/json/;
@@ -18,7 +19,7 @@ const parseContentType = (
   return {};
 };
 
-export async function readBody(req: JetRequest) {
+async function readBody(req: JetRequest) {
   const chunks: Uint8Array[] = [];
   req.on("data", (chunk: Uint8Array) => {
     chunks.push(chunk);
@@ -60,14 +61,14 @@ export async function readBody(req: JetRequest) {
   }
 }
 
-export default async function bodyParser(
+export const bodyParser: JetRouteHandler = async (
   req: JetRequest,
   _res: JetResponse,
   next: () => void
-) {
+) => {
   try {
     req.body = await readBody(req);
   } finally {
     next();
   }
-}
+};

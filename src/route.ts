@@ -2,8 +2,14 @@ import { statSync, existsSync } from "fs";
 import { resolve, relative, join } from "path";
 import send from "send";
 
-import type { JetRequest, JetResponse } from "./http.js";
-import type { JetWSServer, JetSocket, Duplex } from "./ws.js";
+import type { Duplex } from "./ws.js";
+import type {
+  JetRequest,
+  JetResponse,
+  JetSocket,
+  ParamsDictionary,
+} from "./types.js";
+import { JetWebSocketServer } from "./types.js";
 
 export type HTTPMethod =
   | "GET"
@@ -61,10 +67,6 @@ export type WSRouteDefiner = {
   ): WSRouteBase;
   (handler: WSRouteHandler, predicate?: WSRoutePredicate): WSRouteBase;
   (handler: WSRouteBase, predicate?: WSRoutePredicate): WSRouteBase;
-};
-
-export type ParamsDictionary = {
-  [key: string]: string;
 };
 
 type RemoveTail<
@@ -194,7 +196,7 @@ export class WSRouteBase {
   }
 
   async handleSocket(
-    wss: JetWSServer,
+    wss: JetWebSocketServer,
     soc: Duplex,
     req: JetRequest,
     head: Buffer,
@@ -374,7 +376,7 @@ export default class Router extends RouteBase {
   }
 
   async handleSocket(
-    wss: JetWSServer,
+    wss: JetWebSocketServer,
     soc: Duplex,
     req: JetRequest,
     head: Buffer,

@@ -1,4 +1,4 @@
-import Jet, { type JetRouter } from "./index.js";
+import Jet, { type JetRouter, WebSocket } from "./index.js";
 import ws from "ws";
 
 const jet = new Jet();
@@ -20,9 +20,9 @@ jet.use("/", (req, res) => {
   res.end();
 });
 
-const room1 = new Jet.Room();
-const room2 = new Jet.Room();
-const room3 = new Jet.Room();
+const room1 = new Jet.WSRoom();
+const room2 = new Jet.WSRoom();
+const room3 = new Jet.WSRoom();
 
 const wsRouter = new Jet.Router();
 

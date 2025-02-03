@@ -2,8 +2,13 @@ import { statSync, existsSync } from "fs";
 import { resolve, relative, join } from "path";
 import send from "send";
 
-import type { JetRequest, JetResponse } from "./http.js";
-import { JetWSServer, JetSocket, Duplex } from "./ws.js";
+import type {
+  JetRequest,
+  JetResponse,
+  JetWebSocketServer,
+  JetSocket,
+} from "./types.js";
+import { Duplex } from "./ws.js";
 
 export type HTTPMethod =
   | "GET"
@@ -400,7 +405,7 @@ class JetRouter extends Router<
 
   handle(req: JetRequest, res: JetResponse, next: () => void): void;
   handle(
-    wss: JetWSServer,
+    wss: JetWebSocketServer,
     soc: Duplex,
     req: JetRequest,
     head: Buffer,
@@ -410,7 +415,7 @@ class JetRouter extends Router<
     ...args:
       | [req: JetRequest, res: JetResponse, next: () => void]
       | [
-          wss: JetWSServer,
+          wss: JetWebSocketServer,
           soc: Duplex,
           req: JetRequest,
           head: Buffer,
@@ -421,7 +426,7 @@ class JetRouter extends Router<
     ...args:
       | [req: JetRequest, res: JetResponse, next: () => void]
       | [
-          wss: JetWSServer,
+          wss: JetWebSocketServer,
           soc: Duplex,
           req: JetRequest,
           head: Buffer,

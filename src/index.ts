@@ -1,42 +1,56 @@
-import type { JetRequest, JetResponse, JetCookieOptions } from "./http.js";
 import http, { cookie } from "./http.js";
-import type { JetSocket } from "./ws.js";
-import WebSocket, { JetWSServer, Room, Channel } from "./ws.js";
-import JetRouter from "./route.js";
+import WS from "./ws.js";
+
 import type {
-  RouteHandler as JetRouteHandler,
-  WSRouteHandler as JetWSRouteHandler,
-} from "./route.js";
-import cors from "./cors.js";
-import bodyParser from "./body-parser.js";
-import getParams from "./get-params.js";
-import { BiSet } from "./utils.js";
-
-export { cookie, WebSocket };
-
-export type {
-  JetRouter,
-  JetRouteHandler,
-  JetWSRouteHandler,
   JetRequest,
   JetResponse,
-  JetCookieOptions,
   JetSocket,
+  JetRouteHandler,
+  JetWSRouteHandler,
+  JetCORSOptions,
+} from "./types.js";
+import {
+  JetWebSocketServer,
+  JetRouter,
+  JetWSRoom,
+  JetWSChannel,
+} from "./types.js";
+import { BiSet } from "./utils.js";
+
+import { cors } from "./cors.js";
+import { bodyParser } from "./body-parser.js";
+import getParams from "./get-params.js";
+
+export { cookie, WS as WebSocket };
+
+export type {
+  JetRequest,
+  JetResponse,
+  JetSocket,
+  JetRouteHandler,
+  JetWSRouteHandler,
+  JetCORSOptions,
+  JetWebSocketServer,
+  JetRouter,
+  JetWSRoom,
+  JetWSChannel,
 };
 
 export default class Jet extends http.Server {
   static readonly cookie = cookie;
+  static readonly http = http;
+  static readonly WebSocket = WS;
+
+  static readonly Router = JetRouter;
+  static readonly WSRoom = JetWSRoom;
+  static readonly WSChannel = JetWSChannel;
+  static readonly BiSet = BiSet;
+
   static readonly cors = cors;
   static readonly bodyParser = bodyParser;
   static readonly getParams = getParams;
-  static readonly http = http;
-  static readonly WebSocket = WebSocket;
-  static readonly Router = JetRouter;
-  static readonly Room = Room;
-  static readonly Channel = Channel;
-  static readonly BiSet = BiSet;
 
-  readonly wss = new JetWSServer({ noServer: true });
+  readonly wss = new JetWebSocketServer({ noServer: true });
   readonly route = new JetRouter();
   readonly use = this.route.use;
   readonly get = this.route.get;
