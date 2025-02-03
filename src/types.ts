@@ -1,8 +1,20 @@
 import type { HTTPRequest, HTTPResponse } from "./http.js";
 import { WebSocketServer, WSRoom, WSChannel } from "./ws.js";
 import type { WebSocket } from "./ws.js";
-import type { RouteHandler, WSRouteHandler } from "./route.js";
 import Router from "./route.js";
+
+export type HTTPMethod =
+  | "GET"
+  | "HEAD"
+  | "OPTIONS"
+  | "POST"
+  | "PUT"
+  | "PATCH"
+  | "DELETE"
+  | "TRACE"
+  | "CONNECT";
+
+export type WSMethod = "WS";
 
 export type ParamsDictionary = {
   [key: string]: string;
@@ -21,8 +33,20 @@ export type JetWSChannel = WSChannel;
 
 export const JetRouter = Router;
 export type JetRouter = Router;
-export type JetRouteHandler = RouteHandler;
-export type JetWSRouteHandler = WSRouteHandler;
+
+export type JetRouteNextHandler = () => void | Promise<void>;
+
+export type JetRouteHandler<Params extends ParamsDictionary = {}> = (
+  req: JetRequest<Params>,
+  res: JetResponse,
+  next: JetRouteNextHandler
+) => any | Promise<any>;
+
+export type JetWSRouteHandler<Params extends ParamsDictionary = {}> = (
+  soc: JetSocket,
+  req: JetRequest<Params>,
+  head: Buffer
+) => any | Promise<any>;
 
 export type JetCORSOptions = {
   credentials?: true;

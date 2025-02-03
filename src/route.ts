@@ -6,67 +6,45 @@ import type { Duplex } from "./ws.js";
 import type {
   JetRequest,
   JetResponse,
+  JetRouteNextHandler,
+  JetRouteHandler,
+  JetWSRouteHandler,
   JetSocket,
   ParamsDictionary,
+  HTTPMethod,
+  WSMethod,
 } from "./types.js";
 import { JetWebSocketServer } from "./types.js";
 
-export type HTTPMethod =
-  | "GET"
-  | "HEAD"
-  | "OPTIONS"
-  | "POST"
-  | "PUT"
-  | "PATCH"
-  | "DELETE"
-  | "TRACE"
-  | "CONNECT";
-
-export type WSMethod = "WS";
-
-export type RouteNextHandler = () => void | Promise<void>;
-
-export type RouteHandler<Params extends ParamsDictionary = {}> = (
-  req: JetRequest<Params>,
-  res: JetResponse,
-  next: RouteNextHandler
-) => any | Promise<any>;
-
-export type WSRouteHandler<Params extends ParamsDictionary = {}> = (
-  soc: JetSocket,
-  req: JetRequest<Params>,
-  head: Buffer
-) => any | Promise<any>;
-
-export type WSRoutePredicate<Params extends ParamsDictionary = {}> = (
+export type JetWSRoutePredicate<Params extends ParamsDictionary = {}> = (
   soc: Duplex,
   req: JetRequest<Params>,
   head: Buffer
 ) => boolean | Promise<boolean>;
 
-export type RouteDefiner = {
+export type JetRouteDefiner = {
   <P extends string | undefined>(
     pathPattern: P,
-    handler: RouteHandler<RouteParameters<P extends string ? P : "">>
+    handler: JetRouteHandler<RouteParameters<P extends string ? P : "">>
   ): RouteBase;
   <P extends string | undefined>(pathPattern: P, handler: RouteBase): RouteBase;
-  (handler: RouteHandler): RouteBase;
+  (handler: JetRouteHandler): RouteBase;
   (handler: RouteBase): RouteBase;
 };
 
-export type WSRouteDefiner = {
+export type JetWSRouteDefiner = {
   <P extends string | undefined>(
     pathPattern: P,
-    handler: WSRouteHandler<RouteParameters<P extends string ? P : "">>,
-    predicate?: WSRoutePredicate<RouteParameters<P extends string ? P : "">>
-  ): WSRouteBase;
+    handler: JetWSRouteHandler<RouteParameters<P extends string ? P : "">>,
+    predicate?: JetWSRoutePredicate<RouteParameters<P extends string ? P : "">>
+  ): JetWSRouteBase;
   <P extends string | undefined>(
     pathPattern: P,
-    handler: WSRouteBase,
-    predicate?: WSRoutePredicate<RouteParameters<P extends string ? P : "">>
-  ): WSRouteBase;
-  (handler: WSRouteHandler, predicate?: WSRoutePredicate): WSRouteBase;
-  (handler: WSRouteBase, predicate?: WSRoutePredicate): WSRouteBase;
+    handler: JetWSRouteBase,
+    predicate?: JetWSRoutePredicate<RouteParameters<P extends string ? P : "">>
+  ): JetWSRouteBase;
+  (handler: JetWSRouteHandler, predicate?: JetWSRoutePredicate): JetWSRouteBase;
+  (handler: JetWSRouteBase, predicate?: JetWSRoutePredicate): JetWSRouteBase;
 };
 
 type RemoveTail<
@@ -100,13 +78,15 @@ const isString = (s: any): s is string => typeof s === "string";
 
 const isFunction = (f: any): f is Function => typeof f === "function";
 
-const isHttpRoutable = (pattern: any): pattern is RouteHandler | RouteBase =>
+const isHttpRoutable = (pattern: any): pattern is JetRouteHandler | RouteBase =>
   isFunction(pattern) || pattern instanceof RouteBase;
 
-const isWSRoutable = (pattern: any): pattern is WSRouteHandler | WSRouteBase =>
-  isFunction(pattern) || pattern instanceof WSRouteBase;
+const isWSRoutable = (
+  pattern: any
+): pattern is JetWSRouteHandler | JetWSRouteBase =>
+  isFunction(pattern) || pattern instanceof JetWSRouteBase;
 
-const isWSPreHandler = (pattern: any): pattern is WSRoutePredicate =>
+const isWSPreHandler = (pattern: any): pattern is JetWSRoutePredicate =>
   isFunction(pattern);
 
 const matchRoute = (
@@ -153,12 +133,12 @@ const matchRoute = (
 export class RouteBase {
   readonly method?: HTTPMethod;
   readonly pattern?: string;
-  readonly handler?: RouteHandler | RouteBase | Router;
+  readonly handler?: JetRouteHandler | RouteBase | Router;
 
   constructor(
     method?: HTTPMethod,
     pattern?: string,
-    handler?: RouteHandler | RouteBase
+    handler?: JetRouteHandler | RouteBase
   ) {
     this.method = method;
     this.pattern = pattern;
@@ -168,7 +148,7 @@ export class RouteBase {
   handle(
     req: JetRequest,
     res: JetResponse,
-    next: RouteNextHandler,
+    next: JetRouteNextHandler,
     root?: string,
     currentPattern?: string
   ): void {
@@ -180,15 +160,15 @@ export class RouteBase {
   }
 }
 
-export class WSRouteBase {
+export class JetWSRouteBase {
   readonly pattern?: string;
-  readonly handler?: WSRouteHandler | WSRouteBase | Router;
-  readonly predicate?: WSRoutePredicate;
+  readonly handler?: JetWSRouteHandler | JetWSRouteBase | Router;
+  readonly predicate?: JetWSRoutePredicate;
 
   constructor(
     pattern?: string,
-    handler?: WSRouteHandler | WSRouteBase,
-    predicate?: WSRoutePredicate
+    handler?: JetWSRouteHandler | JetWSRouteBase,
+    predicate?: JetWSRoutePredicate
   ) {
     this.pattern = pattern;
     this.handler = handler;
@@ -200,13 +180,13 @@ export class WSRouteBase {
     soc: Duplex,
     req: JetRequest,
     head: Buffer,
-    next: RouteNextHandler,
+    next: JetRouteNextHandler,
     root?: string,
     currentPattern?: string
   ) {
     const handler = this.handler;
     if (!handler) return next();
-    if (handler instanceof WSRouteBase || handler instanceof Router) {
+    if (handler instanceof JetWSRouteBase || handler instanceof Router) {
       handler.handleSocket(wss, soc, req, head, next, root, currentPattern);
       return;
     }
@@ -234,7 +214,7 @@ export class StaticRouter extends RouteBase {
   constructor(
     root: string,
     options: ServeStaticOptions = {},
-    handler?: RouteHandler
+    handler?: JetRouteHandler
   ) {
     super(void 0, void 0, handler);
     const { index } = options;
@@ -245,7 +225,7 @@ export class StaticRouter extends RouteBase {
   handle(
     req: JetRequest,
     res: JetResponse,
-    next: RouteNextHandler,
+    next: JetRouteNextHandler,
     root: string = "",
     currentPattern: string = ""
   ) {
@@ -277,40 +257,40 @@ export class StaticRouter extends RouteBase {
 }
 
 type HTTPRouteArg1 = string | HTTPRouteArg2;
-type HTTPRouteArg2 = RouteHandler | RouteBase;
-type WSRouteArg1 = string | WSRouteHandler | WSRouteBase;
-type WSRouteArg2 = WSRouteHandler | WSRouteBase | WSRoutePredicate;
-type WSRouteArg3 = WSRoutePredicate;
+type HTTPRouteArg2 = JetRouteHandler | RouteBase;
+type WSRouteArg1 = string | JetWSRouteHandler | JetWSRouteBase;
+type WSRouteArg2 = JetWSRouteHandler | JetWSRouteBase | JetWSRoutePredicate;
+type WSRouteArg3 = JetWSRoutePredicate;
 
 export default class Router extends RouteBase {
-  readonly stack: (RouteBase | WSRouteBase)[] = [];
+  readonly stack: (RouteBase | JetWSRouteBase)[] = [];
 
-  constructor(handler?: RouteHandler) {
+  constructor(handler?: JetRouteHandler) {
     super();
     if (handler) this.use(handler);
   }
 
-  use: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+  use: JetRouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler(void 0, a, b);
-  get: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+  get: JetRouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler("GET", a, b);
-  post: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+  post: JetRouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler("POST", a, b);
-  put: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+  put: JetRouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler("PUT", a, b);
-  delete: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+  delete: JetRouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler("DELETE", a, b);
-  head: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+  head: JetRouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler("HEAD", a, b);
-  trace: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+  trace: JetRouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler("TRACE", a, b);
-  options: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+  options: JetRouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler("OPTIONS", a, b);
-  patch: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+  patch: JetRouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler("PATCH", a, b);
-  connect: RouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
+  connect: JetRouteDefiner = (a: HTTPRouteArg1, b?: HTTPRouteArg2) =>
     this.addHandler("CONNECT", a, b);
-  ws: WSRouteDefiner = (a: WSRouteArg1, b?: WSRouteArg2, c?: WSRouteArg3) =>
+  ws: JetWSRouteDefiner = (a: WSRouteArg1, b?: WSRouteArg2, c?: WSRouteArg3) =>
     this.addHandler("WS", a, b, c);
 
   static(root: string, options?: ServeStaticOptions): RouteBase;
@@ -334,7 +314,7 @@ export default class Router extends RouteBase {
   async handle(
     req: JetRequest,
     res: JetResponse,
-    next: RouteNextHandler,
+    next: JetRouteNextHandler,
     _root: string = "",
     _currentPattern: string = ""
   ) {
@@ -343,7 +323,7 @@ export default class Router extends RouteBase {
     const root = `${_currentPattern}${this.pattern || ""}` || "/";
     if (stack.length === 0) return next();
     for (const handler of stack) {
-      if (handler instanceof WSRouteBase) continue;
+      if (handler instanceof JetWSRouteBase) continue;
       const currPattern = `${root}${handler.pattern || ""}`;
       const { isMatch, params } = matchRoute(
         handler.method,
@@ -380,7 +360,7 @@ export default class Router extends RouteBase {
     soc: Duplex,
     req: JetRequest,
     head: Buffer,
-    next: RouteNextHandler,
+    next: JetRouteNextHandler,
     _root: string = "",
     _currentPattern: string = ""
   ) {
@@ -406,7 +386,7 @@ export default class Router extends RouteBase {
             soc.once(HANDLED, reject);
             (isRouter
               ? handler.handler
-              : (handler as WSRouteBase)
+              : (handler as JetWSRouteBase)
             ).handleSocket(wss, soc, req, head, resolve, root, currPattern);
           });
         } catch {
@@ -418,31 +398,41 @@ export default class Router extends RouteBase {
   }
 
   addHandler(
-    arg1?: WSMethod | WSRouteHandler | WSRouteBase,
-    arg2?: string | WSRouteHandler | WSRouteBase,
-    arg3?: WSRouteHandler | WSRouteBase | WSRoutePredicate,
-    arg4?: WSRoutePredicate
-  ): WSRouteBase;
+    arg1?: WSMethod | JetWSRouteHandler | JetWSRouteBase,
+    arg2?: string | JetWSRouteHandler | JetWSRouteBase,
+    arg3?: JetWSRouteHandler | JetWSRouteBase | JetWSRoutePredicate,
+    arg4?: JetWSRoutePredicate
+  ): JetWSRouteBase;
   addHandler(
-    arg1?: HTTPMethod | RouteHandler | RouteBase,
-    arg2?: string | RouteHandler | RouteBase,
-    arg3?: RouteHandler | RouteBase
+    arg1?: HTTPMethod | JetRouteHandler | RouteBase,
+    arg2?: string | JetRouteHandler | RouteBase,
+    arg3?: JetRouteHandler | RouteBase
   ): RouteBase;
   addHandler(
-    arg1?: string | RouteHandler | RouteBase,
-    arg2?: string | RouteHandler | RouteBase,
-    arg3?: RouteHandler | RouteBase
+    arg1?: string | JetRouteHandler | RouteBase,
+    arg2?: string | JetRouteHandler | RouteBase,
+    arg3?: JetRouteHandler | RouteBase
   ): RouteBase;
   addHandler(
-    arg1?: string | RouteHandler | RouteBase | WSRouteHandler | WSRouteBase,
-    arg2?: string | RouteHandler | RouteBase | WSRouteHandler | WSRouteBase,
-    arg3?:
-      | RouteHandler
+    arg1?:
+      | string
+      | JetRouteHandler
       | RouteBase
-      | WSRouteHandler
-      | WSRouteBase
-      | WSRoutePredicate,
-    arg4?: WSRoutePredicate
+      | JetWSRouteHandler
+      | JetWSRouteBase,
+    arg2?:
+      | string
+      | JetRouteHandler
+      | RouteBase
+      | JetWSRouteHandler
+      | JetWSRouteBase,
+    arg3?:
+      | JetRouteHandler
+      | RouteBase
+      | JetWSRouteHandler
+      | JetWSRouteBase
+      | JetWSRoutePredicate,
+    arg4?: JetWSRoutePredicate
   ) {
     const method =
       isString(arg2) && isString(arg1)
@@ -457,7 +447,7 @@ export default class Router extends RouteBase {
       const _predicate = handlers2[i + 1];
       const predicate =
         i !== -1 && isWSPreHandler(_predicate) ? _predicate : void 0;
-      const rb = new WSRouteBase(pattern, handler, predicate);
+      const rb = new JetWSRouteBase(pattern, handler, predicate);
       this.stack.push(rb);
       return rb;
     }
@@ -470,7 +460,7 @@ export default class Router extends RouteBase {
     return rb;
   }
 
-  removeHandler(routeBase: RouteBase | WSRouteBase) {
+  removeHandler(routeBase: RouteBase | JetWSRouteBase) {
     const index = this.stack.indexOf(routeBase);
     if (index === -1) return false;
     this.stack.splice(index, 1);
