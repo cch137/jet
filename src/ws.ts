@@ -28,18 +28,18 @@ type BufferLike =
 type ChannelId = string | number | symbol;
 
 export type JetSocket = WS & {
-  readonly rooms: BiSet<JetSocket, "sockets", WSRoom>;
+  readonly rooms: BiSet<JetSocket, "sockets", JetWSRoom>;
   readonly roles: Readonly<Set<string | number | symbol>>;
-  to: (id: ChannelId) => WSChannel | undefined;
-  subscribe: (id: ChannelId) => WSChannel;
-  unsubscribe: (id: ChannelId) => WSChannel;
-} & Events<{ join: [WSRoom]; leave: [WSRoom] }>;
+  to: (id: ChannelId) => JetWSChannel | undefined;
+  subscribe: (id: ChannelId) => JetWSChannel;
+  unsubscribe: (id: ChannelId) => JetWSChannel;
+} & Events<{ join: [JetWSRoom]; leave: [JetWSRoom] }>;
 
 const _ROLES = Symbol("roles");
 
 Object.defineProperty(WS.prototype, "rooms", {
   get: function () {
-    const value = new BiSet<JetSocket, "sockets", WSRoom>(this, "sockets");
+    const value = new BiSet<JetSocket, "sockets", JetWSRoom>(this, "sockets");
     Object.defineProperty(this, "rooms", {
       value,
       configurable: false,
@@ -58,7 +58,7 @@ Object.defineProperty(WS.prototype, "roles", {
 
 // @ts-ignore
 WS.prototype.to = function (id: ChannelId) {
-  return new WSChannel(id);
+  return new JetWSChannel(id);
 };
 
 // @ts-ignore
@@ -91,7 +91,7 @@ function broadcast(
   );
 }
 
-export class WSRoom extends Emitter<{
+export class JetWSRoom extends Emitter<{
   join: [JetSocket];
   leave: [JetSocket];
 }> {
@@ -100,7 +100,7 @@ export class WSRoom extends Emitter<{
     onleave?: (soc: JetSocket) => void
   ) {
     super();
-    this.sockets = new BiSet<WSRoom, "rooms", JetSocket>(
+    this.sockets = new BiSet<JetWSRoom, "rooms", JetSocket>(
       this,
       "rooms",
       void 0,
@@ -113,7 +113,7 @@ export class WSRoom extends Emitter<{
     );
   }
 
-  readonly sockets: BiSet<WSRoom, "rooms", JetSocket>;
+  readonly sockets: BiSet<JetWSRoom, "rooms", JetSocket>;
 
   join(soc: JetSocket) {
     this.sockets.add(soc);
@@ -128,7 +128,7 @@ export class WSRoom extends Emitter<{
   broadcast = broadcast.bind(this);
 }
 
-export class WSChannel {
+export class JetWSChannel {
   private static channels = new Map<ChannelId, Set<JetSocket>>();
 
   constructor(id: ChannelId) {
@@ -138,27 +138,27 @@ export class WSChannel {
   readonly id: ChannelId;
 
   get sockets() {
-    return Object.freeze(Array.from(WSChannel.channels.get(this.id) || []));
+    return Object.freeze(Array.from(JetWSChannel.channels.get(this.id) || []));
   }
 
   add(soc: JetSocket) {
-    const channel = WSChannel.channels.get(this.id);
+    const channel = JetWSChannel.channels.get(this.id);
     if (channel) channel.add(soc);
-    else WSChannel.channels.set(this.id, new Set([soc]));
+    else JetWSChannel.channels.set(this.id, new Set([soc]));
     return this;
   }
 
   remove(soc: JetSocket) {
-    const channel = WSChannel.channels.get(this.id);
+    const channel = JetWSChannel.channels.get(this.id);
     if (channel) {
       channel.delete(soc);
-      if (channel.size === 0) WSChannel.channels.delete(this.id);
+      if (channel.size === 0) JetWSChannel.channels.delete(this.id);
     }
     return this;
   }
 
   has(soc: JetSocket) {
-    return WSChannel.channels.get(this.id)?.has(soc) || false;
+    return JetWSChannel.channels.get(this.id)?.has(soc) || false;
   }
 
   broadcast = broadcast.bind(this);

@@ -1,7 +1,7 @@
 import type { HTTPRequest, HTTPResponse } from "./http.js";
-import { WebSocketServer, WSRoom, WSChannel } from "./ws.js";
+import { WebSocketServer, JetWSRoom, JetWSChannel } from "./ws.js";
 import type { JetSocket } from "./ws.js";
-import Router from "./route.js";
+import JetRouter from "./route.js";
 
 export type HTTPMethod =
   | "GET"
@@ -23,16 +23,13 @@ export type ParamsDictionary = {
 export type JetRequest<P extends ParamsDictionary = {}> = HTTPRequest<P>;
 export type JetResponse = HTTPResponse;
 
-export const JetWebSocketServer = WebSocketServer;
-export type JetWebSocketServer = WebSocketServer;
-export type { JetSocket };
-export const JetWSRoom = WSRoom;
-export type JetWSRoom = WSRoom;
-export const JetWSChannel = WSChannel;
-export type JetWSChannel = WSChannel;
-
-export const JetRouter = Router;
-export type JetRouter = Router;
+export {
+  WebSocketServer as JetWebSocketServer,
+  JetSocket,
+  JetWSRoom,
+  JetWSChannel,
+  JetRouter,
+};
 
 export type JetRouteNextHandler = () => void | Promise<void>;
 
