@@ -147,9 +147,23 @@ export class JetWSRoom extends Emitter<{
 export class JetWSChannel extends JetWSRoom {
   private static readonly channels = new Map<ChannelId, JetWSChannel>();
 
-  static get(id: ChannelId, permanent?: boolean) {
+  static init(id: ChannelId, permanent = false) {
     if (!this.channels.has(id)) {
       this.channels.set(id, new JetWSChannel(id, permanent));
+    }
+
+    const channel = this.channels.get(id)!;
+
+    if (channel.permanent !== permanent) {
+      channel.permanent = permanent;
+    }
+
+    return channel;
+  }
+
+  static get(id: ChannelId) {
+    if (!this.channels.has(id)) {
+      this.channels.set(id, new JetWSChannel(id));
     }
 
     return this.channels.get(id)!;
@@ -167,7 +181,7 @@ export class JetWSChannel extends JetWSRoom {
 
   private constructor(
     public readonly id: ChannelId,
-    public readonly permanent = false
+    private permanent = false
   ) {
     super();
   }
