@@ -25,6 +25,11 @@ declare module "http" {
   }
 }
 
+const JetIp = Symbol("ip");
+const JetProtocol = Symbol("protocol");
+const JetURL = Symbol("url");
+const JetCookies = Symbol("cookies");
+
 const extractHeader = (
   data: string | string[] | undefined
 ): string | undefined =>
@@ -38,7 +43,7 @@ http.IncomingMessage.prototype.getHeader = function getHeader(name: string) {
 
 Object.defineProperty(http.IncomingMessage.prototype, "jetURL", {
   get: function () {
-    return (this.__Jet_jetURL ||= new URL(
+    return (this[JetURL] ||= new URL(
       this.url || "",
       `${this.protocol}://${this.getHeader("host")}`
     ));
@@ -47,11 +52,11 @@ Object.defineProperty(http.IncomingMessage.prototype, "jetURL", {
 
 Object.defineProperty(http.IncomingMessage.prototype, "protocol", {
   get: function () {
-    if (this.__Jet_protocol) return this.__Jet_protocol;
+    if (this[JetProtocol]) return this[JetProtocol];
     const cfVisitorMatched = (this.getHeader("cf-visitor") || "").match(
       /"scheme":"(.*)"/
     );
-    return (this.__Jet_protocol =
+    return (this[JetProtocol] =
       (cfVisitorMatched
         ? cfVisitorMatched[1]
         : this.getHeader("x-forwarded-proto")) || "http");
@@ -60,7 +65,7 @@ Object.defineProperty(http.IncomingMessage.prototype, "protocol", {
 
 Object.defineProperty(http.IncomingMessage.prototype, "ip", {
   get: function () {
-    return (this.__Jet_ip ||=
+    return (this[JetIp] ||=
       extractHeader(this.headers["cf-connecting-ip"]) ||
       (extractHeader(this.headers["x-forwarded-for"]) || "")
         .split(",")[0]
@@ -73,9 +78,9 @@ Object.defineProperty(http.IncomingMessage.prototype, "ip", {
 
 Object.defineProperty(http.IncomingMessage.prototype, "cookies", {
   get: function () {
-    if (this.__Jet_cookies) return this.__Jet_cookies;
+    if (this[JetCookies]) return this[JetCookies];
     const rawCookie = extractHeader(this.headers["cookie"]);
-    return (this.__Jet_cookies = rawCookie ? cookie.parse(rawCookie) : {});
+    return (this[JetCookies] = rawCookie ? cookie.parse(rawCookie) : {});
   },
 });
 
