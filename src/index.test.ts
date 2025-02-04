@@ -29,7 +29,7 @@ const wsRouter = new Jet.Router();
 wsRouter.ws("/ws-test", (soc) => {
   soc.ping();
   soc.on("pong", () => {
-    room1.join(soc);
+    soc.join(room1);
     console.log("pong");
   });
 });

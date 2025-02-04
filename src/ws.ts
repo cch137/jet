@@ -30,9 +30,14 @@ type ChannelId = string | number | symbol;
 export type JetSocket = WebSocket & {
   readonly rooms: BiSet<JetSocket, "sockets", JetWSRoom>;
   readonly roles: Readonly<Set<string | number | symbol>>;
-  to: (id: ChannelId) => JetWSChannel | undefined;
-  subscribe: (id: ChannelId) => JetWSChannel;
-  unsubscribe: (id: ChannelId) => JetWSChannel;
+  join: {
+    (room: JetWSRoom): JetWSRoom;
+    (channelId: ChannelId): JetWSChannel;
+  };
+  leave: {
+    (room: JetWSRoom): JetWSRoom;
+    (channelId: ChannelId): JetWSChannel | undefined;
+  };
 } & Events<{ join: [JetWSRoom]; leave: [JetWSRoom] }>;
 
 const _ROLES = Symbol("roles");
@@ -57,39 +62,26 @@ Object.defineProperty(WebSocket.prototype, "roles", {
 });
 
 // @ts-ignore
-WebSocket.prototype.to = function (id: ChannelId) {
-  return new JetWSChannel(id);
+WebSocket.prototype.join = function (room: JetWSRoom | ChannelId) {
+  if (room instanceof JetWSRoom) {
+    room.add(this as JetSocket);
+    return room;
+  }
+  const channel = JetWSChannel.get(room);
+  channel.add(this as JetSocket);
+  return channel;
 };
 
 // @ts-ignore
-WebSocket.prototype.subscribe = function (id: ChannelId) {};
-
-// @ts-ignore
-WebSocket.prototype.unsubscribe = function (id: ChannelId) {};
-
-function broadcast(data: BufferLike, cb?: (err?: Error) => void): void;
-function broadcast(
-  data: BufferLike,
-  options: {
-    mask?: boolean | undefined;
-    binary?: boolean | undefined;
-    compress?: boolean | undefined;
-    fin?: boolean | undefined;
-  },
-  cb?: (err?: Error) => void
-): void;
-function broadcast(
-  data: BufferLike,
-  arg2?: object | ((err?: Error) => void),
-  arg3?: (err?: Error) => void
-) {
-  const cb = typeof arg2 === "function" ? arg2 : arg3;
-  const options = typeof arg2 === "object" ? arg2 : {};
-  // @ts-ignore
-  this.sockets.forEach((soc) =>
-    soc.send(data, options, cb as (err?: Error) => void)
-  );
-}
+WebSocket.prototype.leave = function (room: JetWSRoom | ChannelId) {
+  if (room instanceof JetWSRoom) {
+    room.remove(this as JetSocket);
+    return room;
+  }
+  const channel = JetWSChannel.tryGet(room);
+  channel?.remove(this as JetSocket);
+  return channel;
+};
 
 export class JetWSRoom extends Emitter<{
   join: [JetSocket];
@@ -115,53 +107,70 @@ export class JetWSRoom extends Emitter<{
 
   readonly sockets: BiSet<JetWSRoom, "rooms", JetSocket>;
 
-  join(soc: JetSocket) {
-    this.sockets.add(soc);
-    return this;
-  }
-
-  leave(soc: JetSocket) {
-    this.sockets.delete(soc);
-    return this;
-  }
-
-  broadcast = broadcast.bind(this);
-}
-
-export class JetWSChannel {
-  private static channels = new Map<ChannelId, Set<JetSocket>>();
-
-  constructor(id: ChannelId) {
-    this.id = id;
-  }
-
-  readonly id: ChannelId;
-
-  get sockets() {
-    return Object.freeze(Array.from(JetWSChannel.channels.get(this.id) || []));
-  }
-
   add(soc: JetSocket) {
-    const channel = JetWSChannel.channels.get(this.id);
-    if (channel) channel.add(soc);
-    else JetWSChannel.channels.set(this.id, new Set([soc]));
-    return this;
+    return this.sockets.add(soc);
   }
 
   remove(soc: JetSocket) {
-    const channel = JetWSChannel.channels.get(this.id);
-    if (channel) {
-      channel.delete(soc);
-      if (channel.size === 0) JetWSChannel.channels.delete(this.id);
-    }
-    return this;
+    return this.sockets.delete(soc);
   }
 
   has(soc: JetSocket) {
-    return JetWSChannel.channels.get(this.id)?.has(soc) || false;
+    return this.sockets.has(soc);
   }
 
-  broadcast = broadcast.bind(this);
+  broadcast(data: BufferLike, cb?: (err?: Error) => void): void;
+  broadcast(
+    data: BufferLike,
+    options: {
+      mask?: boolean | undefined;
+      binary?: boolean | undefined;
+      compress?: boolean | undefined;
+      fin?: boolean | undefined;
+    },
+    cb?: (err?: Error) => void
+  ): void;
+  broadcast(
+    data: BufferLike,
+    arg2?: object | ((err?: Error) => void),
+    arg3?: (err?: Error) => void
+  ) {
+    const cb = typeof arg2 === "function" ? arg2 : arg3;
+    const options = typeof arg2 === "object" ? arg2 : {};
+    // @ts-ignore
+    this.sockets.forEach((soc) =>
+      soc.send(data, options, cb as (err?: Error) => void)
+    );
+  }
+}
+
+export class JetWSChannel extends JetWSRoom {
+  private static readonly channels = new Map<ChannelId, JetWSChannel>();
+
+  static get(id: ChannelId, permanent?: boolean) {
+    if (!this.channels.has(id)) {
+      this.channels.set(id, new JetWSChannel(id, permanent));
+    }
+
+    return this.channels.get(id)!;
+  }
+
+  static tryGet(id: ChannelId) {
+    return this.channels.get(id);
+  }
+
+  static clean() {
+    for (const [id, channel] of this.channels) {
+      if (!channel.sockets.size && !channel.permanent) this.channels.delete(id);
+    }
+  }
+
+  private constructor(
+    public readonly id: ChannelId,
+    public readonly permanent = false
+  ) {
+    super();
+  }
 }
 
 export default WS;
