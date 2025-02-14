@@ -29,7 +29,7 @@ export const cors = ({
     );
     res.setHeader(
       "Access-Control-Allow-Methods",
-      methods ? methods.join(", ") : "*"
+      methods ? methods.join(", ") : "GET, POST, PUT, DELETE, PATCH, OPTIONS"
     );
     res.setHeader(
       "Access-Control-Allow-Headers",
