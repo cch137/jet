@@ -5,13 +5,11 @@ import mime from "mime";
 import type { ParamsDictionary } from "./route.js";
 import { UAParser } from "ua-parser-js";
 
-export type JetParsedUserAgent = UAParser.IResult;
-
 declare module "http" {
   interface IncomingMessage<P extends ParamsDictionary = {}> {
     jetURL: URL;
     readonly ip: string;
-    readonly ua: JetParsedUserAgent;
+    readonly ua: UAParser.IResult;
     readonly protocol: string;
     readonly cookies: Partial<{ [key: string]: string }>;
     params: P;
@@ -170,6 +168,6 @@ export type JetResponse = http.ServerResponse<http.IncomingMessage> & {
   req: http.IncomingMessage;
 } & NodeJS.WritableStream;
 
-export { cookie };
+export { cookie, UAParser };
 
 export default http;
