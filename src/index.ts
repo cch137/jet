@@ -1,7 +1,7 @@
 import http, { cookie } from "./http.js";
 import WebSocket from "./ws.js";
 
-import type { JetRequest, JetResponse } from "./http.js";
+import type { JetParsedUserAgent, JetRequest, JetResponse } from "./http.js";
 import type { JetSocket } from "./ws.js";
 import type { JetRouteHandler, JetWSRouteHandler } from "./route.js";
 import type { JetCORSOptions } from "./cors.js";
@@ -26,6 +26,7 @@ export type {
   JetRouter,
   JetWSRoom,
   JetWSChannel,
+  JetParsedUserAgent,
 };
 
 export default class Jet extends http.Server {
