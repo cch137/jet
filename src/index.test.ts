@@ -10,7 +10,7 @@ type JR = JetRouter;
 router.use(Jet.cors());
 
 router.get("/", (req, res) => {
-  console.log("root OK");
+  console.log("root OK", req.ua);
   res.send("OK");
 });
 
@@ -58,7 +58,12 @@ jet.listen(PORT, () => {
   } catch {
     console.log("ws failed");
   }
-  fetch(`http://localhost:${PORT}/`)
+  fetch(`http://localhost:${PORT}/`, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0",
+    },
+  })
     .then(async (res) => console.log(res.status, await res.text()))
     .catch((e) => console.log(e.message));
 });

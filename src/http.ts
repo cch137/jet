@@ -3,11 +3,13 @@ import cookie, { type SerializeOptions } from "cookie";
 import mime from "mime";
 
 import type { ParamsDictionary } from "./route.js";
+import { UAParser } from "ua-parser-js";
 
 declare module "http" {
   interface IncomingMessage<P extends ParamsDictionary = {}> {
     jetURL: URL;
     readonly ip: string;
+    readonly ua: UAParser.IResult;
     readonly protocol: string;
     readonly cookies: Partial<{ [key: string]: string }>;
     params: P;
@@ -26,6 +28,7 @@ declare module "http" {
 }
 
 const JetIp = Symbol("ip");
+const JetUa = Symbol("ua");
 const JetProtocol = Symbol("protocol");
 const JetURL = Symbol("url");
 const JetCookies = Symbol("cookies");
@@ -73,6 +76,12 @@ Object.defineProperty(http.IncomingMessage.prototype, "ip", {
       extractHeader(this.headers["true-client-ip"]) ||
       this.socket.remoteAddress ||
       "");
+  },
+});
+
+Object.defineProperty(http.IncomingMessage.prototype, "ua", {
+  get: function () {
+    return (this[JetUa] ||= UAParser(this.headers["user-agent"]) || "");
   },
 });
 
