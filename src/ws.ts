@@ -5,7 +5,38 @@ import WS, { WebSocket, WebSocketServer } from "ws";
 
 import { BiSet } from "./utils.js";
 
-export { Duplex, WebSocketServer as JetWebSocketServer };
+export class JetWebSocketServer
+  extends WebSocketServer
+  implements WebSocketServer
+{
+  private heartbeatInterval?: NodeJS.Timeout;
+
+  setHeartbeat(
+    intervalMs: number,
+    timeoutMs: number,
+    pingData?: any,
+    pingMask?: boolean,
+    pingCb?: (err: Error) => void
+  ) {
+    this.clearHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      const pendingClients = new Set(this.clients);
+      this.clients.forEach((soc) => {
+        soc.once("pong", () => pendingClients.delete(soc));
+        soc.ping(pingData, pingMask, pingCb);
+      });
+      setTimeout(() => {
+        pendingClients.forEach((soc) => soc.terminate());
+      }, timeoutMs);
+    }, intervalMs);
+  }
+
+  clearHeartbeat() {
+    clearInterval(this.heartbeatInterval);
+  }
+}
+
+export { Duplex };
 
 type BufferLike =
   | string
