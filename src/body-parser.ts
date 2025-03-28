@@ -135,16 +135,43 @@ const urlencoded = (
   };
 };
 
-const multipart = (options?: Partial<formidable.Options>): JetRouteHandler => {
-  return async (req, _, next) => {
-    if (req[JetParsed]) return await next();
-    const [fields, files] = await new IncomingForm(options).parse(req);
-    req.body = fields;
-    req.files = files;
-    setParsed(req);
-    await next();
-  };
-};
+function multipart(options?: Partial<formidable.Options>): JetRouteHandler;
+function multipart(
+  optionsConstructor?: (
+    req: JetRequest
+  ) => Partial<formidable.Options> | undefined
+): JetRouteHandler;
+function multipart(
+  optionsConstructor?: (
+    req: JetRequest
+  ) => Promise<Partial<formidable.Options> | undefined>
+): JetRouteHandler;
+function multipart(
+  options?:
+    | Partial<formidable.Options>
+    | ((req: JetRequest) => Partial<formidable.Options> | undefined)
+    | ((req: JetRequest) => Promise<Partial<formidable.Options> | undefined>)
+): JetRouteHandler {
+  return typeof options === "function"
+    ? async (req, _, next) => {
+        if (req[JetParsed]) return await next();
+        const [fields, files] = await new IncomingForm(
+          await options(req)
+        ).parse(req);
+        req.body = fields;
+        req.files = files;
+        setParsed(req);
+        await next();
+      }
+    : async (req, _, next) => {
+        if (req[JetParsed]) return await next();
+        const [fields, files] = await new IncomingForm(options).parse(req);
+        req.body = fields;
+        req.files = files;
+        setParsed(req);
+        await next();
+      };
+}
 
 const _buffer: JetRouteHandler = async (req, _, next) => {
   if (req[JetParsed]) return await next();
