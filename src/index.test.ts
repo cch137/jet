@@ -1,16 +1,25 @@
-import Jet, { type JetRouter, WebSocket } from "./index.js";
+import Jet from "./index.js";
 import ws from "ws";
 
 const jet = new Jet();
 
 const router = new Jet.Router();
 
-type JR = JetRouter;
-
 router.use(Jet.cors());
+router.use(Jet.bodyParser());
 
 router.get("/", (req, res) => {
   console.log("root OK", req.ua);
+  res.send("OK");
+});
+
+router.post("/", (req, res) => {
+  console.log("root POST", req.headers["content-type"]);
+  const file = req.files?.f1?.at(0);
+  // write file
+  if (file) {
+    console.log(file.filepath);
+  }
   res.send("OK");
 });
 
@@ -58,14 +67,37 @@ jet.listen(PORT, () => {
   } catch {
     console.log("ws failed");
   }
+  // fetch(`http://localhost:${PORT}/`, {
+  //   headers: {
+  //     "User-Agent":
+  //       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0",
+  //   },
+  // })
+  //   .then(async (res) => console.log(res.status, await res.text()))
+  //   .catch((e) => console.log(e.message));
+  const file1 = new File(["Hello, World!"], "file1.txt", {
+    type: "text/plain",
+  });
+  const file2 = new File(["Sample image content"], "image.png", {
+    type: "image/png",
+  });
+  const form = new FormData();
+  form.set("a", "123");
+  form.set("b", "456");
+  // form.set("f1", file1);
+  // form.set("f2", file2);
   fetch(`http://localhost:${PORT}/`, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0",
     },
+    method: "POST",
+    body: form,
   })
     .then(async (res) => console.log(res.status, await res.text()))
-    .catch((e) => console.log(e.message));
+    .catch((e) => console.log("res err:", e.message));
 });
 
-process.on("uncaughtException", (e) => console.log(e.message));
+process.on("uncaughtException", (e) => {
+  console.log("process error:", e.message);
+});

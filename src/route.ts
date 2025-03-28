@@ -171,18 +171,21 @@ export class JetRouteBase {
     this.handler = handler;
   }
 
-  handle(
+  async handle(
     req: JetRequest,
     res: JetResponse,
     next: JetRouteNextHandler,
     root?: string,
     currentPattern?: string
-  ): void {
+  ): Promise<void> {
     const handler = this.handler;
-    if (!handler) next();
-    else if (handler instanceof JetRouteBase)
-      handler.handle(req, res, next, root, currentPattern);
-    else handler(req, res, next);
+    if (!handler) {
+      return await next();
+    } else if (handler instanceof JetRouteBase) {
+      return await handler.handle(req, res, next, root, currentPattern);
+    } else {
+      return await handler(req, res, next);
+    }
   }
 }
 
@@ -248,7 +251,7 @@ export class StaticRouter extends JetRouteBase {
     this.root = resolve(root);
   }
 
-  handle(
+  async handle(
     req: JetRequest,
     res: JetResponse,
     next: JetRouteNextHandler,
@@ -261,24 +264,29 @@ export class StaticRouter extends JetRouteBase {
       const absFilepath = join(this.root, filepath);
       if (existsSync(absFilepath)) {
         const stat = statSync(absFilepath);
-        if (stat.isFile()) return send(req, absFilepath).pipe(res);
+        if (stat.isFile()) {
+          send(req, absFilepath).pipe(res);
+          return;
+        }
         const { index } = this;
         if (stat.isDirectory() && index.length) {
           for (const filename of index) {
             const indexFilepath = join(absFilepath, filename);
             const stat = statSync(indexFilepath);
-            if (stat.isFile())
-              return pathaname.endsWith("/")
+            if (stat.isFile()) {
+              pathaname.endsWith("/")
                 ? send(req, indexFilepath).pipe(res)
                 : res.redirect(`${pathaname}/`);
+              return;
+            }
           }
         }
       }
     } catch (e) {
-      console.error(e);
-      return res.status(500).end();
+      res.status(500).end();
+      return;
     }
-    return super.handle(req, res, next, root, currentPattern);
+    return await super.handle(req, res, next, root, currentPattern);
   }
 }
 
@@ -347,7 +355,7 @@ export class JetRouter extends JetRouteBase {
     const stack = this.stack;
     const { method, jetURL } = req;
     const root = `${_currentPattern}${this.pattern || ""}` || "/";
-    if (stack.length === 0) return next();
+    if (stack.length === 0) return await next();
     for (const handler of stack) {
       if (handler instanceof JetWSRouteBase) continue;
       const currPattern = `${root}${handler.pattern || ""}`;
@@ -359,26 +367,33 @@ export class JetRouter extends JetRouteBase {
         handler.handler instanceof JetRouteBase || !handler.pattern
       );
       if (isMatch) {
-        try {
-          await new Promise<void>((resolve, reject) => {
+        const isHandled = await new Promise<boolean>(
+          async (resolve, reject) => {
             req.params = params || {};
-            res.once("close", reject);
-            handler.handle(
-              req,
-              res,
-              () => {
-                resolve(), res.off("close", reject);
-              },
-              root,
-              currPattern
-            );
-          });
-        } catch {
+            const onClose = () => resolve(true);
+            res.once("close", onClose);
+            try {
+              await handler.handle(
+                req,
+                res,
+                () => {
+                  resolve(false);
+                  res.off("close", onClose);
+                },
+                root,
+                currPattern
+              );
+            } catch (e) {
+              reject(e);
+            }
+          }
+        );
+        if (isHandled) {
           return;
         }
       }
     }
-    return next();
+    return await next();
   }
 
   async handleSocket(
@@ -393,7 +408,7 @@ export class JetRouter extends JetRouteBase {
     const stack = this.stack;
     const url = req.jetURL;
     const root = `${_currentPattern}${this.pattern || ""}` || "/";
-    if (stack.length === 0) return next();
+    if (stack.length === 0) return await next();
     for (const handler of stack) {
       const isRouter = handler.handler instanceof JetRouter;
       if (handler instanceof JetRouteBase && !isRouter) continue;
@@ -420,7 +435,7 @@ export class JetRouter extends JetRouteBase {
         }
       }
     }
-    return next();
+    return await next();
   }
 
   addHandler(

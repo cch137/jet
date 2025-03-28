@@ -4,17 +4,30 @@ import mime from "mime";
 
 import type { ParamsDictionary } from "./route.js";
 import { UAParser } from "ua-parser-js";
+import type formidable from "formidable";
+import type IIncomingForm from "formidable/Formidable.js";
 
 declare module "http" {
   interface IncomingMessage<P extends ParamsDictionary = {}> {
     jetURL: URL;
     readonly ip: string;
     readonly ua: UAParser.IResult;
+    readonly charset: string;
     readonly protocol: string;
     readonly cookies: Partial<{ [key: string]: string }>;
+    readonly [JetParsed]: boolean;
     params: P;
     getHeader(name: string): string | undefined;
-    body: any;
+    body:
+      | undefined
+      | null
+      | number
+      | string
+      | { [key: string]: unknown }
+      | unknown[]
+      | IIncomingForm
+      | Uint8Array<ArrayBufferLike>;
+    files?: formidable.Files<string>;
   }
   interface ServerResponse {
     send(data: any): this;
@@ -32,6 +45,8 @@ const JetUa = Symbol("ua");
 const JetProtocol = Symbol("protocol");
 const JetURL = Symbol("url");
 const JetCookies = Symbol("cookies");
+const JetCharset = Symbol("charset");
+export const JetParsed = Symbol("parsed");
 
 const extractHeader = (
   data: string | string[] | undefined
@@ -91,6 +106,31 @@ Object.defineProperty(http.IncomingMessage.prototype, "cookies", {
     const rawCookie = extractHeader(this.headers["cookie"]);
     return (this[JetCookies] = rawCookie ? cookie.parse(rawCookie) : {});
   },
+});
+
+Object.defineProperty(http.IncomingMessage.prototype, "charset", {
+  get: function () {
+    return (this[JetCharset] ||=
+      String(this.headers["content-type"] || "").match(
+        /charset=([^\s;]+)/
+      )?.[1] || "utf-8");
+  },
+});
+
+Object.defineProperty(http.IncomingMessage.prototype, JetParsed, {
+  get() {
+    return false;
+  },
+  set(v) {
+    if (v) {
+      Object.defineProperty(this, JetParsed, {
+        value: true,
+        configurable: false,
+        writable: false,
+      });
+    }
+  },
+  configurable: true,
 });
 
 http.ServerResponse.prototype.send = function send(data: any) {
@@ -168,6 +208,6 @@ export type JetResponse = http.ServerResponse<http.IncomingMessage> & {
   req: http.IncomingMessage;
 } & NodeJS.WritableStream;
 
-export { cookie, UAParser };
+export { mime, cookie, UAParser };
 
 export default http;

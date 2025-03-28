@@ -20,7 +20,9 @@ export const cors = ({
   headers,
 }: JetCORSOptions = {}): JetRouteHandler => {
   return (req: JetRequest, res: JetResponse, next: () => void) => {
-    if (credentials) res.setHeader("Access-Control-Allow-Credentials", "true");
+    if (credentials) {
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
     res.setHeader(
       "Access-Control-Allow-Origin",
       (origin === "*"
