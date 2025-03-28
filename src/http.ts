@@ -26,7 +26,7 @@ declare module "http" {
       | { [key: string]: unknown }
       | unknown[]
       | IIncomingForm
-      | Uint8Array<ArrayBufferLike>;
+      | Uint8Array;
     files?: formidable.Files<string>;
   }
   interface ServerResponse {
