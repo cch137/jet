@@ -1,6 +1,5 @@
 import { statSync, existsSync } from "fs";
 import { resolve, relative, join } from "path";
-import send from "send";
 
 import type { JetRequest, JetResponse } from "./http.js";
 import type { JetSocket } from "./ws.js";
@@ -265,7 +264,7 @@ export class StaticRouter extends JetRouteBase {
       if (existsSync(absFilepath)) {
         const stat = statSync(absFilepath);
         if (stat.isFile()) {
-          send(req, absFilepath).pipe(res);
+          res.sendFile(absFilepath);
           return;
         }
         const { index } = this;
@@ -274,9 +273,11 @@ export class StaticRouter extends JetRouteBase {
             const indexFilepath = join(absFilepath, filename);
             const stat = statSync(indexFilepath);
             if (stat.isFile()) {
-              pathaname.endsWith("/")
-                ? send(req, indexFilepath).pipe(res)
-                : res.redirect(`${pathaname}/`);
+              if (pathaname.endsWith("/")) {
+                res.sendFile(indexFilepath);
+              } else {
+                res.redirect(`${pathaname}/`);
+              }
               return;
             }
           }

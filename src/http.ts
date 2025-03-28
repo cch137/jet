@@ -6,6 +6,7 @@ import type { ParamsDictionary } from "./route.js";
 import { UAParser } from "ua-parser-js";
 import type formidable from "formidable";
 import type IIncomingForm from "formidable/Formidable.js";
+import send from "send";
 
 declare module "http" {
   interface IncomingMessage<P extends ParamsDictionary = {}> {
@@ -31,6 +32,7 @@ declare module "http" {
   }
   interface ServerResponse {
     send(data: any): this;
+    sendFile(path: string, options?: send.SendOptions): Promise<this>;
     json(data: any): this;
     type(type: string): this;
     status(code?: number, message?: string): this;
@@ -201,6 +203,18 @@ http.ServerResponse.prototype.redirect = function redirect(
   return this;
 };
 
+http.ServerResponse.prototype.sendFile = function sendFile(
+  path: string,
+  options?: send.SendOptions
+) {
+  return new Promise((resolve, reject) => {
+    send(this.req, path, options)
+      .on("error", reject)
+      .on("end", () => resolve(this))
+      .pipe(this);
+  });
+};
+
 export type JetRequest<P extends ParamsDictionary = {}> =
   http.IncomingMessage<P> & NodeJS.ReadableStream;
 
@@ -208,6 +222,6 @@ export type JetResponse = http.ServerResponse<http.IncomingMessage> & {
   req: http.IncomingMessage;
 } & NodeJS.WritableStream;
 
-export { mime, cookie, UAParser };
+export { send, mime, cookie, UAParser };
 
 export default http;

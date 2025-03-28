@@ -1,4 +1,4 @@
-import http, { mime, cookie, UAParser } from "./http.js";
+import http, { send, mime, cookie, UAParser } from "./http.js";
 import WebSocket from "./ws.js";
 
 import type { JetRequest, JetResponse } from "./http.js";
@@ -13,7 +13,7 @@ import { cors } from "./cors.js";
 import { bodyParser, formidable } from "./body-parser.js";
 import { mergeQuery } from "./merge-query.js";
 
-export { http, mime, cookie, formidable, UAParser, WebSocket };
+export { http, send, mime, cookie, formidable, UAParser, WebSocket };
 
 export type {
   JetRequest,
