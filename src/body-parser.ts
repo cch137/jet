@@ -135,23 +135,12 @@ const urlencoded = (
   };
 };
 
-function multipart(options?: Partial<formidable.Options>): JetRouteHandler;
-function multipart(
-  optionsConstructor?: (
-    req: JetRequest
-  ) => Partial<formidable.Options> | undefined
-): JetRouteHandler;
-function multipart(
-  optionsConstructor?: (
-    req: JetRequest
-  ) => Promise<Partial<formidable.Options> | undefined>
-): JetRouteHandler;
-function multipart(
+const multipart = (
   options?:
     | Partial<formidable.Options>
     | ((req: JetRequest) => Partial<formidable.Options> | undefined)
     | ((req: JetRequest) => Promise<Partial<formidable.Options> | undefined>)
-): JetRouteHandler {
+): JetRouteHandler => {
   return typeof options === "function"
     ? async (req, _, next) => {
         if (req[JetParsed]) return await next();
@@ -171,7 +160,7 @@ function multipart(
         setParsed(req);
         await next();
       };
-}
+};
 
 const _buffer: JetRouteHandler = async (req, _, next) => {
   if (req[JetParsed]) return await next();
