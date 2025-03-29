@@ -7,10 +7,13 @@ import { UAParser } from "ua-parser-js";
 import type formidable from "formidable";
 import type IIncomingForm from "formidable/Formidable.js";
 import send from "send";
+import qs, { parse as qsParse } from "qs";
+import type Jet from "./index.js";
 
 declare module "http" {
   interface IncomingMessage<P extends ParamsDictionary = {}> {
-    jetURL: URL;
+    server: Jet;
+    urlObject: URL;
     readonly ip: string;
     readonly ua: UAParser.IResult;
     readonly charset: string;
@@ -28,6 +31,7 @@ declare module "http" {
       | unknown[]
       | IIncomingForm
       | Uint8Array;
+    query: qs.ParsedQs | { [key: string]: unknown };
     files?: formidable.Files<string>;
   }
   interface ServerResponse {
@@ -45,7 +49,7 @@ declare module "http" {
 const JetIp = Symbol("ip");
 const JetUa = Symbol("ua");
 const JetProtocol = Symbol("protocol");
-const JetURL = Symbol("url");
+const JetURLObject = Symbol("url");
 const JetCookies = Symbol("cookies");
 const JetCharset = Symbol("charset");
 export const JetParsed = Symbol("parsed");
@@ -61,9 +65,9 @@ http.IncomingMessage.prototype.getHeader = function getHeader(name: string) {
   return extractHeader(this.headers[name]);
 };
 
-Object.defineProperty(http.IncomingMessage.prototype, "jetURL", {
+Object.defineProperty(http.IncomingMessage.prototype, "urlObject", {
   get: function () {
-    return (this[JetURL] ||= new URL(
+    return (this[JetURLObject] ||= new URL(
       this.url || "",
       `${this.protocol}://${this.getHeader("host")}`
     ));
@@ -131,6 +135,46 @@ Object.defineProperty(http.IncomingMessage.prototype, JetParsed, {
         writable: false,
       });
     }
+  },
+  configurable: true,
+});
+
+export const qsDecoder: qs.IParseBaseOptions["decoder"] = (
+  str,
+  defaultDecoder,
+  charset,
+  type
+) => {
+  const fallback = () => defaultDecoder(str, undefined, charset);
+  if (type === "key") return fallback();
+  const strWithoutPlus = str.replace(/\+/g, " ");
+  const decodedTrimmed = decodeURIComponent(strWithoutPlus).trim();
+  switch (decodedTrimmed) {
+    case "":
+      return fallback();
+    case "true":
+      return true;
+    case "false":
+      return false;
+  }
+  const numeric = Number(decodedTrimmed);
+  if (!isNaN(numeric)) return numeric;
+  return fallback();
+};
+
+Object.defineProperty(http.IncomingMessage.prototype, "query", {
+  get() {
+    return (this.query = qsParse(
+      (this as JetRequest).urlObject.search.slice(1),
+      (this as JetRequest).server.qsParseOptions
+    ));
+  },
+  set(v) {
+    Object.defineProperty(this, "query", {
+      value: v,
+      writable: true,
+      configurable: true,
+    });
   },
   configurable: true,
 });
@@ -222,6 +266,6 @@ export type JetResponse = http.ServerResponse<http.IncomingMessage> & {
   req: http.IncomingMessage;
 } & NodeJS.WritableStream;
 
-export { send, mime, cookie, UAParser };
+export { qs, send, mime, cookie, UAParser };
 
 export default http;

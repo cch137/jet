@@ -1,4 +1,4 @@
-import http, { send, mime, cookie, UAParser } from "./http.js";
+import http, { qs, send, mime, cookie, UAParser, qsDecoder } from "./http.js";
 import WebSocket from "./ws.js";
 
 import type { JetRequest, JetResponse } from "./http.js";
@@ -13,7 +13,7 @@ import { cors } from "./cors.js";
 import { bodyParser, formidable } from "./body-parser.js";
 import { mergeQuery } from "./merge-query.js";
 
-export { http, send, mime, cookie, formidable, UAParser, WebSocket };
+export { http, qs, send, mime, cookie, formidable, UAParser, WebSocket };
 
 export type {
   JetRequest,
@@ -28,14 +28,11 @@ export type {
   JetWSChannel,
 };
 
-export default class Jet extends http.Server {
-  static readonly http = http;
-  static readonly mime = mime;
-  static readonly cookie = cookie;
-  static readonly formidable = formidable;
-  static readonly UAParser = UAParser;
-  static readonly WebSocket = WebSocket;
+export type JetServerOptions = http.ServerOptions & {
+  qsParseOptions?: qs.IParseOptions;
+};
 
+export default class Jet extends http.Server {
   static readonly Router = JetRouter;
   static readonly WSRoom = JetWSRoom;
   static readonly WSChannel = JetWSChannel;
@@ -60,6 +57,8 @@ export default class Jet extends http.Server {
   readonly ws = this.route.ws;
   readonly static = this.route.static;
 
+  qsParseOptions?: qs.IParseOptions;
+
   errorHandler: (req: JetRequest, res: JetResponse, error: unknown) => void = (
     _,
     res
@@ -68,9 +67,13 @@ export default class Jet extends http.Server {
     res.end();
   };
 
-  constructor(options: http.ServerOptions = {}) {
+  constructor({
+    qsParseOptions = { decoder: qsDecoder },
+    ...options
+  }: JetServerOptions = {}) {
     super(options, async (req, res) => {
       try {
+        req.server = this;
         await this.route.handle(req, res, () => {
           res.status(404).end();
         });
@@ -78,6 +81,7 @@ export default class Jet extends http.Server {
         this.errorHandler(req, res, e);
       }
     });
+    this.qsParseOptions = qsParseOptions;
     this.on("upgrade", (req, soc, head) => {
       this.route.handleSocket(this.wss, soc, req, head, () => {
         soc.destroy();

@@ -267,7 +267,7 @@ export class StaticRouter extends JetRouteBase {
     root: string = "",
     currentPattern: string = ""
   ) {
-    const pathaname = req.jetURL.pathname;
+    const pathaname = req.urlObject.pathname;
     const filepath = relative(currentPattern, pathaname);
     const absFilepath = join(this.root, filepath);
     const notFound = async () => {
@@ -364,7 +364,7 @@ export class JetRouter extends JetRouteBase {
     _currentPattern: string = ""
   ) {
     const stack = this.stack;
-    const { method, jetURL } = req;
+    const { method, urlObject } = req;
     const root = `${_currentPattern}${this.pattern || ""}` || "/";
     if (stack.length === 0) return await next();
     for (const handler of stack) {
@@ -374,7 +374,7 @@ export class JetRouter extends JetRouteBase {
         handler.method,
         currPattern,
         method,
-        decodeURIComponent(jetURL.pathname),
+        decodeURIComponent(urlObject.pathname),
         handler.handler instanceof JetRouteBase || !handler.pattern
       );
       if (!isMatch) continue;
@@ -410,7 +410,7 @@ export class JetRouter extends JetRouteBase {
     _currentPattern: string = ""
   ) {
     const stack = this.stack;
-    const url = req.jetURL;
+    const url = req.urlObject;
     const root = `${_currentPattern}${this.pattern || ""}` || "/";
     if (stack.length === 0) return await next();
     for (const handler of stack) {

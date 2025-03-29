@@ -26,7 +26,7 @@ export const cors = ({
     res.setHeader(
       "Access-Control-Allow-Origin",
       (origin === "*"
-        ? trimOrigin(req.headers.referer ?? req.jetURL.origin)
+        ? trimOrigin(req.headers.referer ?? req.urlObject.origin)
         : origin) ?? "*"
     );
     res.setHeader(

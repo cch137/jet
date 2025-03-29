@@ -7,6 +7,15 @@ const router = new Jet.Router();
 
 router.use(Jet.cors());
 router.use(Jet.bodyParser());
+router.use((req, res, next) => {
+  console.log(1, req.query);
+  next();
+});
+router.use(Jet.mergeQuery());
+router.use((req, res, next) => {
+  console.log(1, req.query);
+  next();
+});
 
 router.get("/", (req, res) => {
   console.log("root OK", req.ua);
@@ -86,7 +95,7 @@ jet.listen(PORT, () => {
   form.set("b", "456");
   // form.set("f1", file1);
   // form.set("f2", file2);
-  fetch(`http://localhost:${PORT}/`, {
+  fetch(`http://localhost:${PORT}/?c=11&d=12`, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0",
