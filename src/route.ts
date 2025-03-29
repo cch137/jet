@@ -213,9 +213,19 @@ export class JetWSRouteBase {
     currentPattern?: string
   ) {
     const handler = this.handler;
-    if (!handler) return next();
+    if (!handler) {
+      return await next();
+    }
     if (handler instanceof JetWSRouteBase || handler instanceof JetRouter) {
-      handler.handleSocket(wss, soc, req, head, next, root, currentPattern);
+      await handler.handleSocket(
+        wss,
+        soc,
+        req,
+        head,
+        next,
+        root,
+        currentPattern
+      );
       return;
     }
     if (this.predicate && !(await this.predicate(soc, req, head))) {
@@ -257,37 +267,37 @@ export class StaticRouter extends JetRouteBase {
     root: string = "",
     currentPattern: string = ""
   ) {
-    try {
-      const pathaname = req.jetURL.pathname;
-      const filepath = relative(currentPattern, pathaname);
-      const absFilepath = join(this.root, filepath);
-      if (existsSync(absFilepath)) {
-        const stat = statSync(absFilepath);
-        if (stat.isFile()) {
-          res.sendFile(absFilepath);
-          return;
-        }
-        const { index } = this;
-        if (stat.isDirectory() && index.length) {
-          for (const filename of index) {
-            const indexFilepath = join(absFilepath, filename);
-            const stat = statSync(indexFilepath);
-            if (stat.isFile()) {
-              if (pathaname.endsWith("/")) {
-                res.sendFile(indexFilepath);
-              } else {
-                res.redirect(`${pathaname}/`);
-              }
-              return;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      res.status(500).end();
+    const pathaname = req.jetURL.pathname;
+    const filepath = relative(currentPattern, pathaname);
+    const absFilepath = join(this.root, filepath);
+    const notFound = async () => {
+      await super.handle(req, res, next, root, currentPattern);
+    };
+    if (!existsSync(absFilepath)) {
+      return await notFound();
+    }
+    const stat = statSync(absFilepath);
+    if (stat.isFile()) {
+      await res.sendFile(absFilepath);
       return;
     }
-    return await super.handle(req, res, next, root, currentPattern);
+    const { index } = this;
+    if (!stat.isDirectory() || !index.length) {
+      return await notFound();
+    }
+    for (const filename of index) {
+      const indexFilepath = join(absFilepath, filename);
+      const stat = statSync(indexFilepath);
+      if (stat.isFile()) {
+        if (pathaname.endsWith("/")) {
+          await res.sendFile(indexFilepath);
+        } else {
+          res.redirect(`${pathaname}/`);
+        }
+        return;
+      }
+    }
+    return await notFound();
   }
 }
 
@@ -367,31 +377,24 @@ export class JetRouter extends JetRouteBase {
         decodeURIComponent(jetURL.pathname),
         handler.handler instanceof JetRouteBase || !handler.pattern
       );
-      if (isMatch) {
-        const isHandled = await new Promise<boolean>(
-          async (resolve, reject) => {
-            req.params = params || {};
-            const onClose = () => resolve(true);
-            res.once("close", onClose);
-            try {
-              await handler.handle(
-                req,
-                res,
-                () => {
-                  resolve(false);
-                  res.off("close", onClose);
-                },
-                root,
-                currPattern
-              );
-            } catch (e) {
-              reject(e);
-            }
-          }
+      if (!isMatch) continue;
+      const isHandled = await new Promise<boolean>(async (resolve) => {
+        req.params = params || {};
+        const onClose = () => resolve(true);
+        res.once("close", onClose);
+        await handler.handle(
+          req,
+          res,
+          () => {
+            resolve(false);
+            res.off("close", onClose);
+          },
+          root,
+          currPattern
         );
-        if (isHandled) {
-          return;
-        }
+      });
+      if (isHandled) {
+        return;
       }
     }
     return await next();
@@ -421,20 +424,28 @@ export class JetRouter extends JetRouteBase {
         decodeURIComponent(url.pathname),
         isRouter || !handler.pattern
       );
-      if (isMatch) {
-        try {
-          await new Promise<void>((resolve, reject) => {
-            req.params = params || {};
-            soc.once(HANDLED, reject);
-            (isRouter
-              ? handler.handler
-              : (handler as JetWSRouteBase)
-            ).handleSocket(wss, soc, req, head, resolve, root, currPattern);
-          });
-        } catch {
-          return;
-        }
-      }
+      if (!isMatch) continue;
+      const isHandled = await new Promise<boolean>(async (resolve) => {
+        req.params = params || {};
+        const onClose = () => resolve(true);
+        soc.once(HANDLED, onClose);
+        await (isRouter
+          ? handler.handler
+          : (handler as JetWSRouteBase)
+        ).handleSocket(
+          wss,
+          soc,
+          req,
+          head,
+          () => {
+            resolve(false);
+            soc.off(HANDLED, onClose);
+          },
+          root,
+          currPattern
+        );
+      });
+      if (isHandled) return;
     }
     return await next();
   }
