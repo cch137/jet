@@ -4,16 +4,22 @@ import WebSocket from "./ws.js";
 import type { JetRequest, JetResponse } from "./http.js";
 import type { JetSocket } from "./ws.js";
 import type { JetRouteHandler, JetWSRouteHandler } from "./route.js";
-import type { JetCORSOptions } from "./cors.js";
-
 import { JetWebSocketServer, JetWSRoom, JetWSChannel } from "./ws.js";
 import { JetRouter } from "./route.js";
 import { BiSet } from "./utils.js";
-import { cors } from "./cors.js";
-import { bodyParser, formidable } from "./body-parser.js";
-import { mergeQuery } from "./merge-query.js";
+
+import type { JetCORSOptions } from "./middlewares/cors.js";
+import { cors } from "./middlewares/cors.js";
+import { bodyParser, formidable } from "./middlewares/body-parser.js";
+import { mergeQuery } from "./middlewares/merge-query.js";
 
 export { http, qs, send, mime, cookie, formidable, UAParser, WebSocket };
+
+type JetErrorHandler = (
+  req: JetRequest,
+  res: JetResponse,
+  error: unknown
+) => void;
 
 export type {
   JetRequest,
@@ -21,6 +27,7 @@ export type {
   JetSocket,
   JetRouteHandler,
   JetWSRouteHandler,
+  JetErrorHandler,
   JetCORSOptions,
   JetWebSocketServer,
   JetRouter,
@@ -28,9 +35,16 @@ export type {
   JetWSChannel,
 };
 
-export type JetServerOptions = http.ServerOptions & {
-  qsParseOptions?: qs.IParseOptions;
+const defaultErrorHandler: JetErrorHandler = (_, res) => {
+  res.status(500);
+  res.end();
 };
+
+export type JetServerOptions = http.ServerOptions &
+  Partial<{
+    qsParseOptions: qs.IParseOptions;
+    errorHandler: JetErrorHandler;
+  }>;
 
 export default class Jet extends http.Server {
   static readonly Router = JetRouter;
@@ -58,17 +72,11 @@ export default class Jet extends http.Server {
   readonly static = this.route.static;
 
   qsParseOptions?: qs.IParseOptions;
-
-  errorHandler: (req: JetRequest, res: JetResponse, error: unknown) => void = (
-    _,
-    res
-  ) => {
-    res.status(500);
-    res.end();
-  };
+  errorHandler: JetErrorHandler;
 
   constructor({
     qsParseOptions = { decoder: qsDecoder },
+    errorHandler = defaultErrorHandler,
     ...options
   }: JetServerOptions = {}) {
     super(options, async (req, res) => {
@@ -82,6 +90,7 @@ export default class Jet extends http.Server {
       }
     });
     this.qsParseOptions = qsParseOptions;
+    this.errorHandler = errorHandler;
     this.on("upgrade", (req, soc, head) => {
       this.route.handleSocket(this.wss, soc, req, head, () => {
         soc.destroy();

@@ -1,5 +1,5 @@
-import type { JetRequest, JetResponse } from "./http.js";
-import type { JetRouteHandler } from "./route.js";
+import type { JetRequest, JetResponse } from "../http.js";
+import type { JetRouteHandler } from "../route.js";
 
 export type JetCORSOptions = {
   credentials?: true;

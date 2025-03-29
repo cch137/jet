@@ -1,8 +1,8 @@
 import qs from "qs";
 import formidable, { IncomingForm } from "formidable";
 
-import { JetParsed, type JetRequest, type JetResponse } from "./http.js";
-import type { JetRouteHandler, JetRouteNextHandler } from "./route.js";
+import { JetParsed, type JetRequest, type JetResponse } from "../http.js";
+import type { JetRouteHandler, JetRouteNextHandler } from "../route.js";
 
 export { formidable };
 

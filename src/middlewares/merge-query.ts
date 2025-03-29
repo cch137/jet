@@ -1,4 +1,4 @@
-import type { JetRouteHandler } from "./route.js";
+import type { JetRouteHandler } from "../route.js";
 
 export const mergeQuery = ({
   overwrite = true,
