@@ -12,6 +12,7 @@ import type { JetCORSOptions } from "./middlewares/cors.js";
 import { cors } from "./middlewares/cors.js";
 import { bodyParser, formidable } from "./middlewares/body-parser.js";
 import { mergeQuery } from "./middlewares/merge-query.js";
+import { noCache } from "./middlewares/no-cache.js";
 
 export { http, qs, send, mime, cookie, formidable, UAParser, WebSocket };
 
@@ -55,6 +56,7 @@ export default class Jet extends http.Server {
   static readonly cors = cors;
   static readonly bodyParser = bodyParser;
   static readonly mergeQuery = mergeQuery;
+  static readonly noCache = noCache;
 
   readonly wss = new JetWebSocketServer({ noServer: true });
   readonly route = new JetRouter();
