@@ -123,8 +123,10 @@ const json = (reviver?: Parameters<typeof JSON.parse>[1]): JetRouteHandler => {
     if (req.method === "GET") return await next();
     if (req.method === "TRACE") return await next();
     if (req[JetParsed]) return await next();
-    const body = await readBody(req);
-    req.body = JSON.parse(new TextDecoder(req.charset).decode(body), reviver);
+    try {
+      const body = await readBody(req);
+      req.body = JSON.parse(new TextDecoder(req.charset).decode(body), reviver);
+    } catch {}
     setParsed(req);
     await next();
   };
