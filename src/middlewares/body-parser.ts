@@ -78,6 +78,10 @@ export const bodyParser = ({
     res: JetResponse,
     next: JetRouteNextHandler
   ) => {
+    if (req.method === "HEAD") return await next();
+    if (req.method === "GET") return await next();
+    if (req.method === "TRACE") return await next();
+
     switch (
       getContentTypeSymbol(req.headers["content-type"], defaultContentType)
     ) {
@@ -115,6 +119,9 @@ const setParsed = (req: JetRequest) => {
 
 const json = (reviver?: Parameters<typeof JSON.parse>[1]): JetRouteHandler => {
   return async (req, _, next) => {
+    if (req.method === "HEAD") return await next();
+    if (req.method === "GET") return await next();
+    if (req.method === "TRACE") return await next();
     if (req[JetParsed]) return await next();
     const body = await readBody(req);
     req.body = JSON.parse(new TextDecoder(req.charset).decode(body), reviver);
@@ -127,6 +134,9 @@ const urlencoded = (
   options?: qs.IParseOptions<qs.BooleanOptional>
 ): JetRouteHandler => {
   return async (req, _, next) => {
+    if (req.method === "HEAD") return await next();
+    if (req.method === "GET") return await next();
+    if (req.method === "TRACE") return await next();
     if (req[JetParsed]) return await next();
     const body = await readBody(req);
     req.body = qs.parse(new TextDecoder(req.charset).decode(body), options);
@@ -143,6 +153,9 @@ const multipart = (
 ): JetRouteHandler => {
   return typeof options === "function"
     ? async (req, _, next) => {
+        if (req.method === "HEAD") return await next();
+        if (req.method === "GET") return await next();
+        if (req.method === "TRACE") return await next();
         if (req[JetParsed]) return await next();
         const [fields, files] = await new IncomingForm(
           await options(req)
@@ -153,6 +166,9 @@ const multipart = (
         await next();
       }
     : async (req, _, next) => {
+        if (req.method === "HEAD") return await next();
+        if (req.method === "GET") return await next();
+        if (req.method === "TRACE") return await next();
         if (req[JetParsed]) return await next();
         const [fields, files] = await new IncomingForm(options).parse(req);
         req.body = fields;
@@ -163,6 +179,9 @@ const multipart = (
 };
 
 const _buffer: JetRouteHandler = async (req, _, next) => {
+  if (req.method === "HEAD") return await next();
+  if (req.method === "GET") return await next();
+  if (req.method === "TRACE") return await next();
   if (req[JetParsed]) return await next();
   req.body = await readBody(req);
   setParsed(req);
@@ -172,6 +191,9 @@ const _buffer: JetRouteHandler = async (req, _, next) => {
 const buffer = (): JetRouteHandler => _buffer;
 
 const _text: JetRouteHandler = async (req, _, next) => {
+  if (req.method === "HEAD") return await next();
+  if (req.method === "GET") return await next();
+  if (req.method === "TRACE") return await next();
   if (req[JetParsed]) return await next();
   const body = await readBody(req);
   req.body = new TextDecoder(req.charset).decode(body);
